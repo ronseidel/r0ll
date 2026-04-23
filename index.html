@@ -1,0 +1,3562 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#F9F9F9;color:#034D32;">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="color-scheme" content="light dark">
+<title>r0ll — dice for deciding</title>
+<meta name="description" content="Tap to roll. Decide who goes first. Single die or multiplayer with guaranteed no-ties. Part of the 0fam.">
+<meta name="theme-color" content="#F9F9F9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1f16" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="r0ll">
+<meta name="mobile-web-app-capable" content="yes">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="0utput.co">
+<meta property="og:title" content="r0ll — dice for deciding">
+<meta property="og:description" content="Tap to roll. Decide who goes first. Single die or multiplayer with guaranteed no-ties.">
+<meta property="og:url" content="https://r0ll.app">
+<meta property="og:image" content="https://r0ll.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="r0ll — a dice rolling app in the 0fam">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="r0ll — dice for deciding">
+<meta name="twitter:description" content="Tap to roll. Decide who goes first. Single die or multiplayer with guaranteed no-ties.">
+<meta name="twitter:image" content="https://r0ll.app/og.png">
+<meta name="twitter:image:alt" content="r0ll — a dice rolling app in the 0fam">
+
+<!-- Inline SVG favicon — dotted-zero glyph mark -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23034D32'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%23F9F9F9' stroke-width='5'/%3E%3Ccircle cx='32' cy='32' r='3.2' fill='%23F9F9F9'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23034D32'/%3E%3Ccircle cx='90' cy='90' r='50' fill='none' stroke='%23F9F9F9' stroke-width='14'/%3E%3Ccircle cx='90' cy='90' r='9' fill='%23F9F9F9'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script>
+// Pre-paint theme resolver — reads system preference and sets inline colors before body renders.
+// No persistence: every load starts from the current system preference.
+(function() {
+  try {
+    var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var html = document.documentElement;
+    html.classList.add(isDark ? 'theme-dark' : 'theme-light');
+    var bg = isDark ? '#0a1f16' : '#F9F9F9';
+    var fg = isDark ? '#E4F3EE' : '#034D32';
+    html.style.background = bg;
+    html.style.color = fg;
+    function setBody() {
+      if (document.body) {
+        document.body.style.background = bg;
+        document.body.style.color = fg;
+      }
+    }
+    if (document.body) setBody();
+    else document.addEventListener('DOMContentLoaded', setBody);
+  } catch (e) {}
+})();
+</script>
+<style>
+:root {
+  --bg: #F9F9F9;
+  --ink: #034D32;
+  --accent: #028454;
+  --accent-bg: #E4F3EE;
+  --border: #C0DDD4;
+  --mint: #00BD78;
+  --muted: rgba(3, 77, 50, 0.55);
+  --die-bg: #FFFFFF;
+}
+
+/* Theme — both themes applied via explicit html class set pre-paint.
+   System preference is resolved once on load; user can then override via toggle. */
+html.theme-dark {
+  --bg: #0a1f16;
+  --ink: #E4F3EE;
+  --accent: #00BD78;
+  --accent-bg: #0f2e20;
+  --border: #1e4834;
+  --mint: #00BD78;
+  --muted: rgba(228, 243, 238, 0.55);
+  --die-bg: #0f2e20;
+}
+html.theme-dark, html.theme-dark body {
+  background: #0a1f16;
+  color: #E4F3EE;
+}
+
+html.theme-light, html.theme-light body {
+  background: #F9F9F9;
+  color: #034D32;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  transition: background 0.2s ease, color 0.2s ease;
+  overscroll-behavior: none;
+}
+
+.container {
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 20px 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 12px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.wordmark {
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-feature-settings: "zero" 1;
+  line-height: 1;
+}
+
+.tagline {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sound-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.sound-btn:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.sound-btn[data-mode="on"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.sound-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.sound-btn > svg { display: none; }
+.sound-btn[data-mode="off"] > .icon-off { display: block; }
+.sound-btn[data-mode="on"] > .icon-on { display: block; }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.theme-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.theme-btn:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.theme-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Sun icon shows in dark mode (click → go to light). Moon shows in light mode (click → go to dark). */
+.theme-btn > svg { display: none; }
+html.theme-light .theme-btn > .icon-moon { display: block; }
+html.theme-dark .theme-btn > .icon-sun { display: block; }
+
+/* Mode toggle */
+.mode-toggle {
+  display: inline-flex;
+  background: var(--accent-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px;
+  margin: 0 auto 28px;
+}
+
+.mode-btn {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  padding: 8px 22px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.mode-btn.active {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* Pills */
+.pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.pill {
+  font-family: 'Space Mono', monospace;
+  font-weight: 400;
+  font-size: 13px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 44px;
+  font-feature-settings: "zero" 1;
+}
+
+.pill:hover {
+  background: var(--accent-bg);
+}
+
+.pill.active {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
+.pill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pills-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* Dice area */
+.dice-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  padding: 24px 0;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 20px;
+  transition: background 0.2s ease;
+}
+
+.dice-area:active {
+  background: var(--accent-bg);
+}
+
+.dice-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  max-width: 100%;
+  margin-bottom: 18px;
+}
+
+.die {
+  width: 92px;
+  height: 92px;
+  background: var(--die-bg);
+  border: 2px solid var(--ink);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: transform 0.15s ease;
+  box-shadow: 0 2px 0 var(--border);
+}
+
+.die.rolling {
+  animation: diceShake 0.12s ease-in-out infinite;
+}
+
+.die.max-roll {
+  animation: maxPulse 0.6s ease-out;
+}
+
+@keyframes diceShake {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  25% { transform: translate(-2px, -3px) rotate(-3deg); }
+  50% { transform: translate(3px, 1px) rotate(2deg); }
+  75% { transform: translate(-1px, 3px) rotate(3deg); }
+}
+
+@keyframes maxPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 2px 0 var(--border);
+    border-color: var(--ink);
+  }
+  40% {
+    transform: scale(1.14);
+    box-shadow: 0 0 0 4px var(--mint), 0 0 26px rgba(0, 189, 120, 0.55);
+    border-color: var(--mint);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 0 var(--border);
+    border-color: var(--ink);
+  }
+}
+
+.die-face {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 38px;
+  color: var(--ink);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.die-face svg.die-pips {
+  width: 78%;
+  height: 78%;
+  color: var(--ink);
+}
+
+.die-type {
+  position: absolute;
+  bottom: 6px;
+  right: 9px;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  font-feature-settings: "zero" 1;
+}
+
+.sum {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sum-value {
+  color: var(--accent);
+  font-weight: 700;
+  margin-left: 8px;
+  font-size: 15px;
+}
+
+.tap-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-top: 14px;
+  transition: opacity 0.2s ease;
+}
+
+.tap-hint.dim { opacity: 0.4; }
+
+/* History */
+.history {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.history-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.history-item {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  color: var(--ink);
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--border);
+  font-feature-settings: "zero" 1;
+}
+
+.history-item:last-child { border-bottom: none; }
+
+.history-item .rolls {
+  color: var(--muted);
+}
+
+.history-empty {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 4px 0;
+}
+
+/* Tournament */
+.setup {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.names-input {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--die-bg);
+  color: var(--ink);
+  min-height: 160px;
+  resize: vertical;
+  width: 100%;
+  line-height: 1.5;
+  transition: border-color 0.2s ease;
+}
+
+.names-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.name-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.name-row-num {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 18px;
+  text-align: right;
+  font-feature-settings: "zero" 1;
+}
+
+.name-row-input {
+  flex: 1;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--die-bg);
+  color: var(--ink);
+  transition: border-color 0.15s ease;
+  min-width: 0;
+}
+
+.name-row-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.name-row-input::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.names-help {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.names-count {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+  margin-top: 6px;
+}
+
+.start-btn {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 14px 28px;
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  align-self: center;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.start-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.start-btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.current-player {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.current-player-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.current-player-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 4px;
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+.player-progress {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  font-feature-settings: "zero" 1;
+}
+
+.tournament-rolls {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.t-roll {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  padding: 8px 4px;
+  border-radius: 6px;
+  font-feature-settings: "zero" 1;
+}
+
+.t-roll .name {
+  color: var(--ink);
+}
+
+.t-roll .val {
+  color: var(--muted);
+}
+
+.t-roll.done .name { color: var(--muted); }
+.t-roll.done .val { color: var(--ink); font-weight: 700; }
+
+.t-roll.active {
+  background: var(--accent-bg);
+  padding: 8px 12px;
+}
+.t-roll.active .val { color: var(--accent); }
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--accent-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  gap: 14px;
+  animation: slideIn 0.4s ease backwards;
+}
+
+.result-row:nth-child(1) { animation-delay: 0.05s; }
+.result-row:nth-child(2) { animation-delay: 0.12s; }
+.result-row:nth-child(3) { animation-delay: 0.19s; }
+.result-row:nth-child(4) { animation-delay: 0.26s; }
+.result-row:nth-child(n+5) { animation-delay: 0.33s; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.result-row.winner {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
+.result-row.winner .result-roll { color: var(--bg); opacity: 0.7; }
+
+.result-rank {
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 36px;
+  font-feature-settings: "zero" 1;
+}
+
+.result-name {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  flex: 1;
+  word-break: break-word;
+}
+
+.result-roll {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  color: var(--muted);
+  font-feature-settings: "zero" 1;
+}
+
+.reset-btn {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  margin-top: 24px;
+  padding: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  align-self: center;
+  transition: color 0.15s;
+}
+
+.reset-btn:hover { color: var(--ink); }
+
+/* ===== Games ===== */
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.game-card {
+  background: var(--accent-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 16px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink);
+  transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 110px;
+}
+
+.game-card:hover { border-color: var(--accent); }
+.game-card:active { transform: scale(0.97); }
+
+.game-card-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.game-card-name {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.game-card-desc {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  line-height: 1.4;
+  font-feature-settings: "zero" 1;
+}
+
+.game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+.game-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--ink);
+  line-height: 1.15;
+}
+
+.game-back {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.game-back:hover { color: var(--ink); border-color: var(--ink); }
+
+.game-rules {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+  line-height: 1.5;
+  font-feature-settings: "zero" 1;
+}
+
+.game-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+/* Held die state — mint ring */
+.die.held {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 3px var(--mint), 0 2px 0 var(--border);
+}
+.die.held .die-face { color: var(--accent); }
+.die.selectable { cursor: pointer; }
+.die.dimmed { opacity: 0.4; }
+
+/* Banked/crossed-out die (for drop-lowest) */
+.die.dropped {
+  opacity: 0.35;
+  position: relative;
+}
+.die.dropped::after {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 50%;
+  height: 0;
+  border-top: 3px solid var(--accent);
+  transform: rotate(-22deg);
+  transform-origin: center;
+  pointer-events: none;
+}
+
+/* Stat roll result grid */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.stat-tile {
+  background: var(--accent-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: center;
+  animation: slideIn 0.35s ease backwards;
+}
+
+.stat-tile-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.stat-tile-value {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+.stat-tile-breakdown {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-feature-settings: "zero" 1;
+}
+
+.stat-tile-breakdown s {
+  color: var(--accent);
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+/* Rolls remaining / turn indicator */
+.game-turn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+  font-feature-settings: "zero" 1;
+}
+
+.game-turn-pips {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.game-turn-pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.game-turn-pip.used { background: var(--accent); }
+
+/* Game CTA row */
+.game-ctas {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.game-cta {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.game-cta:active { transform: scale(0.96); }
+.game-cta:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.game-cta.secondary {
+  background: transparent;
+  color: var(--ink);
+}
+
+.game-cta.warn {
+  border-color: var(--accent);
+  background: transparent;
+  color: var(--accent);
+}
+
+/* Score display */
+.game-score {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  color: var(--ink);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-feature-settings: "zero" 1;
+}
+
+.game-score-big {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  color: var(--accent);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-score-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Craps outcome label */
+.outcome-label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 28px;
+  color: var(--accent);
+  text-align: center;
+  letter-spacing: -0.01em;
+  margin-top: 4px;
+  min-height: 34px;
+  animation: slideIn 0.35s ease backwards;
+}
+
+.outcome-sub {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: -2px;
+  font-feature-settings: "zero" 1;
+}
+
+/* Liar's Dice shroud */
+.shroud {
+  position: relative;
+  padding: 40px 24px;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 20px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 260px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: background 0.15s ease;
+}
+
+.shroud:hover { background: var(--accent); }
+
+.shroud-who {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.shroud-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.shroud-eye {
+  width: 36px;
+  height: 36px;
+  opacity: 0.9;
+}
+
+.liar-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Small note */
+.game-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+  font-feature-settings: "zero" 1;
+}
+
+/* Risk battle layout */
+.risk-battle {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+}
+
+.risk-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.risk-side-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.risk-vs {
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.risk-side .dice-grid {
+  justify-content: center;
+}
+
+.risk-battle .die {
+  width: 62px;
+  height: 62px;
+  border-radius: 12px;
+}
+
+.risk-battle .die .die-face {
+  font-size: 26px;
+}
+
+/* Paired highlight — winner glows green, loser dims */
+.die.battle-win {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 3px var(--mint), 0 2px 0 var(--border);
+}
+
+.die.battle-loss {
+  opacity: 0.45;
+  border-color: var(--muted);
+}
+
+/* Backgammon quadruple dice — for doubles, we show 4 faces */
+.bg-quadruple .die {
+  width: 62px;
+  height: 62px;
+  border-radius: 12px;
+}
+
+.bg-quadruple .die .die-face {
+  font-size: 22px;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 16px 20px 24px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  font-feature-settings: "zero" 1;
+}
+
+.footer a {
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.footer a:hover { color: var(--ink); }
+
+.hidden { display: none !important; }
+
+/* Responsive */
+@media (max-width: 480px) {
+  .die { width: 78px; height: 78px; border-radius: 15px; }
+  .die-face { font-size: 32px; }
+  .wordmark { font-size: 24px; }
+  .tagline { font-size: 10px; }
+  .current-player-name { font-size: 26px; }
+  .container { padding: 20px 16px 16px; }
+}
+
+@media (max-width: 360px) {
+  .die { width: 68px; height: 68px; }
+  .die-face { font-size: 28px; }
+  .dice-grid { gap: 10px; }
+}
+</style>
+</head>
+<body style="background:#F9F9F9;color:#034D32;">
+<div class="container">
+  <header class="header">
+    <div class="brand">
+      <div class="wordmark">r0ll</div>
+      <div class="tagline">dice for deciding</div>
+    </div>
+    <div class="header-actions">
+      <button class="theme-btn" id="theme-toggle" aria-label="Toggle theme" title="Switch theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2"/>
+          <path d="M12 20v2"/>
+          <path d="m4.93 4.93 1.41 1.41"/>
+          <path d="m17.66 17.66 1.41 1.41"/>
+          <path d="M2 12h2"/>
+          <path d="M20 12h2"/>
+          <path d="m6.34 17.66-1.41 1.41"/>
+          <path d="m19.07 4.93-1.41 1.41"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <button class="sound-btn" id="sound-toggle" data-mode="off" aria-label="Sound: off" title="Sound: off · tap to turn on">
+        <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <line x1="22" y1="9" x2="16" y2="15"/>
+          <line x1="16" y1="9" x2="22" y2="15"/>
+        </svg>
+        <svg class="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" data-mode="single">Single</button>
+    <button class="mode-btn" data-mode="multiplayer">Multiplayer</button>
+    <button class="mode-btn" data-mode="games">Games</button>
+  </div>
+
+  <!-- ============ SINGLE MODE ============ -->
+  <section id="single-mode">
+    <div class="pills-label"># of dice</div>
+    <div class="pills" id="count-pills">
+      <button class="pill active" data-count="1">1</button>
+      <button class="pill" data-count="2">2</button>
+      <button class="pill" data-count="3">3</button>
+      <button class="pill" data-count="4">4</button>
+      <button class="pill" data-count="5">5</button>
+      <button class="pill" data-count="6">6</button>
+    </div>
+
+    <div class="dice-area" id="dice-area" role="button" aria-label="Tap to roll">
+      <div class="dice-grid" id="dice-grid"></div>
+      <div class="sum hidden" id="sum-display">Sum<span class="sum-value" id="sum-value">0</span></div>
+      <div class="tap-hint" id="tap-hint">Tap to roll</div>
+    </div>
+
+    <div class="pills-label">Die type</div>
+    <div class="pills" id="die-type-pills">
+      <button class="pill" data-sides="4">d4</button>
+      <button class="pill active" data-sides="6">d6</button>
+      <button class="pill" data-sides="8">d8</button>
+      <button class="pill" data-sides="10">d10</button>
+      <button class="pill" data-sides="12">d12</button>
+      <button class="pill" data-sides="20">d20</button>
+    </div>
+
+    <div class="history">
+      <div class="history-label">Recent</div>
+      <div class="history-list" id="history-list">
+        <div class="history-empty">No rolls yet</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TOURNAMENT MODE ============ -->
+  <section id="tournament-mode" class="hidden">
+    <div id="t-setup" class="setup">
+      <div class="pills-label">Die type</div>
+      <div class="pills" id="t-die-type-pills">
+        <button class="pill" data-sides="4">d4</button>
+        <button class="pill active" data-sides="6">d6</button>
+        <button class="pill" data-sides="8">d8</button>
+        <button class="pill" data-sides="10">d10</button>
+        <button class="pill" data-sides="12">d12</button>
+        <button class="pill" data-sides="20">d20</button>
+      </div>
+      <div>
+        <div class="pills-label" style="margin-bottom:10px">Players</div>
+        <div class="pills" id="player-count-pills">
+          <button class="pill active" data-count="2">2</button>
+          <button class="pill" data-count="3">3</button>
+          <button class="pill" data-count="4">4</button>
+          <button class="pill" data-count="5">5</button>
+          <button class="pill" data-count="6">6</button>
+          <button class="pill" data-count="7">7</button>
+          <button class="pill" data-count="8">8</button>
+          <button class="pill" data-count="9">9</button>
+          <button class="pill" data-count="10">10</button>
+          <button class="pill" data-count="11">11</button>
+          <button class="pill" data-count="12">12</button>
+        </div>
+        <div class="name-rows" id="name-rows"></div>
+        <div class="names-help" style="text-align:center;margin-top:10px">Names optional — leave blank for Player 1, 2, 3…</div>
+      </div>
+      <button class="start-btn" id="start-tournament">Start</button>
+    </div>
+
+    <div id="t-rolling" class="hidden">
+      <div class="current-player">
+        <div class="current-player-label">Up next</div>
+        <div class="current-player-name" id="current-name">—</div>
+        <div class="player-progress" id="progress">0 of 0</div>
+      </div>
+      <div class="dice-area" id="t-dice-area" role="button" aria-label="Tap to roll">
+        <div class="dice-grid" id="t-dice-grid"></div>
+        <div class="tap-hint">Tap to roll</div>
+      </div>
+      <div class="tournament-rolls" id="t-rolls"></div>
+      <button class="reset-btn" id="t-cancel">Cancel</button>
+    </div>
+
+    <div id="t-results" class="hidden">
+      <div class="pills-label" style="margin-bottom:16px">Final order</div>
+      <div class="results" id="results-list"></div>
+      <button class="reset-btn" id="t-reset">Start over</button>
+    </div>
+  </section>
+
+  <!-- ============ GAMES MODE ============ -->
+  <section id="games-mode" class="hidden">
+    <div id="games-picker">
+      <div class="pills-label" style="margin-bottom:12px;text-align:center">Dice games</div>
+      <div class="game-grid">
+        <button class="game-card" data-game="yahtzee">
+          <svg class="game-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="16" cy="8" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="8" cy="16" r="1.3" fill="currentColor"/><circle cx="16" cy="16" r="1.3" fill="currentColor"/></svg>
+          <div class="game-card-name">Yahtzee</div>
+          <div class="game-card-desc">5d6 · hold & re-roll · 3 rolls per turn</div>
+        </button>
+        <button class="game-card" data-game="farkle">
+          <svg class="game-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 3 7l9 5 9-5-9-5Z"/><path d="m3 17 9 5 9-5"/><path d="m3 12 9 5 9-5"/></svg>
+          <div class="game-card-name">Farkle</div>
+          <div class="game-card-desc">6d6 · hold scorers · bank or push luck</div>
+        </button>
+        <button class="game-card" data-game="statroll">
+          <svg class="game-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2 5h5l-4 3 2 5-5-3-5 3 2-5-4-3h5l2-5Z"/></svg>
+          <div class="game-card-name">D&D Stat Roll</div>
+          <div class="game-card-desc">4d6 drop lowest · 6 stats · classic method</div>
+        </button>
+        <button class="game-card" data-game="liars">
+          <svg class="game-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <div class="game-card-name">Liar's Dice</div>
+          <div class="game-card-desc">5d6 · hidden rolls · pass the phone</div>
+        </button>
+        <button class="game-card" data-game="craps">
+          <svg class="game-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="8" width="14" height="14" rx="3"/><circle cx="9" cy="15" r="1.2" fill="currentColor"/><rect x="8" y="2" width="14" height="14" rx="3"/><circle cx="12" cy="6" r="1.2" fill="currentColor"/><circle cx="18" cy="12" r="1.2" fill="currentColor"/></svg>
+          <div class="game-card-name">Craps</div>
+          <div class="game-card-desc">2d6 · snake eyes · boxcars · yo</div>
+        </button>
+      </div>
+
+      <div class="pills-label" style="margin:24px 0 12px;text-align:center">Lost your board game dice?</div>
+      <div class="game-grid">
+        <button class="game-card" data-game="monopoly">
+          <svg class="game-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          <div class="game-card-name">Monopoly</div>
+          <div class="game-card-desc">2d6 · doubles re-roll · 3rd doubles = jail</div>
+        </button>
+        <button class="game-card" data-game="catan">
+          <svg class="game-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z"/><path d="m12 12 9-5"/><path d="m12 12-9-5"/><path d="M12 22V12"/></svg>
+          <div class="game-card-name">Catan</div>
+          <div class="game-card-desc">2d6 · flags 7 for the robber</div>
+        </button>
+        <button class="game-card" data-game="backgammon">
+          <svg class="game-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 4v16"/><path d="M18 4v16"/><path d="m8 7 4 6-4 6"/><path d="m16 7-4 6 4 6"/></svg>
+          <div class="game-card-name">Backgammon</div>
+          <div class="game-card-desc">2d6 · doubles = four moves</div>
+        </button>
+        <button class="game-card" data-game="risk">
+          <svg class="game-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2 20 7.5 17.5 10l-3-3-5 5 3 3L10 17.5 4.5 12 14.5 2Z"/><path d="m3 21 3-3"/><path d="M14 14 21 7"/></svg>
+          <div class="game-card-name">Risk</div>
+          <div class="game-card-desc">attacker vs defender · auto-resolve battles</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== Yahtzee ===== -->
+    <div id="game-yahtzee" class="hidden">
+      <div class="game-header">
+        <div class="game-title">Yahtzee</div>
+        <button class="game-back" data-back>Back</button>
+      </div>
+      <div class="game-rules">Tap dice to hold. Re-roll the rest. Up to 3 rolls per turn.</div>
+      <div class="game-turn">
+        Rolls this turn <span class="game-turn-pips" id="y-pips"><span class="game-turn-pip"></span><span class="game-turn-pip"></span><span class="game-turn-pip"></span></span>
+      </div>
+      <div class="game-stage">
+        <div class="dice-grid" id="y-dice"></div>
+      </div>
+      <div class="game-ctas">
+        <button class="game-cta" id="y-roll">Roll</button>
+        <button class="game-cta secondary" id="y-end">End Turn</button>
+      </div>
+      <div class="game-hint" id="y-hint">Tap Roll to start</div>
+    </div>
+
+    <!-- ===== Farkle ===== -->
+    <div id="game-farkle" class="hidden">
+      <div class="game-header">
+        <div class="game-title">Farkle</div>
+        <button class="game-back" data-back>Back</button>
+      </div>
+      <div class="game-rules">Roll, tap scoring dice to hold, then bank or push your luck. Farkle (no scorers) = turn score lost.</div>
+      <div class="game-stage">
+        <div class="dice-grid" id="f-dice"></div>
+        <div class="game-score">
+          <div class="game-score-big" id="f-turn-score">0</div>
+          <div class="game-score-label">Turn score · held + unbanked</div>
+        </div>
+        <div class="game-score" style="margin-top:4px">
+          <div class="game-score-label">Banked <strong id="f-banked" style="color:var(--ink)">0</strong></div>
+        </div>
+      </div>
+      <div class="game-ctas">
+        <button class="game-cta" id="f-roll">Roll</button>
+        <button class="game-cta secondary" id="f-bank">Bank</button>
+      </div>
+      <div class="game-hint" id="f-hint">Tap Roll to start</div>
+    </div>
+
+    <!-- ===== D&D Stat Roll ===== -->
+    <div id="game-statroll" class="hidden">
+      <div class="game-header">
+        <div class="game-title">D&D Stat Roll</div>
+        <button class="game-back" data-back>Back</button>
+      </div>
+      <div class="game-rules">4d6, drop lowest, per stat. Classic 3d6-keep from ability generation method.</div>
+      <div class="game-stage">
+        <div class="dice-grid" id="s-dice"></div>
+        <div class="outcome-label" id="s-current-stat">STR</div>
+        <div class="outcome-sub" id="s-current-sub">Next stat to roll</div>
+      </div>
+      <div class="game-ctas">
+        <button class="game-cta" id="s-roll">Roll STR</button>
+        <button class="game-cta secondary hidden" id="s-reset">Start Over</button>
+      </div>
+      <div class="stat-grid" id="s-results"></div>
+    </div>
+
+    <!-- ===== Liar's Dice ===== -->
+    <div id="game-liars" class="hidden">
+      <div class="game-header">
+        <div class="game-title">Liar's Dice</div>
+        <button class="game-back" data-back>Back</button>
+      </div>
+      <div class="game-rules">Pass the phone. Each player taps to reveal their hidden 5d6, then taps again to hide before passing.</div>
+      <div id="l-setup" class="liar-setup">
+        <div class="pills-label">Players</div>
+        <div class="pills" id="l-count-pills">
+          <button class="pill" data-count="2">2</button>
+          <button class="pill active" data-count="3">3</button>
+          <button class="pill" data-count="4">4</button>
+          <button class="pill" data-count="5">5</button>
+          <button class="pill" data-count="6">6</button>
+        </div>
+        <button class="game-cta" id="l-start">Start Round</button>
+      </div>
+      <div id="l-hidden" class="hidden game-stage">
+        <div class="shroud" id="l-shroud">
+          <svg class="shroud-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <div class="shroud-who" id="l-who">Player 1</div>
+          <div class="shroud-hint">Tap &amp; hold to peek</div>
+        </div>
+      </div>
+      <div id="l-revealed" class="hidden game-stage">
+        <div class="dice-grid" id="l-dice"></div>
+        <div class="outcome-sub" id="l-revealed-who">Player 1 · remember your roll</div>
+        <div class="game-ctas">
+          <button class="game-cta" id="l-hide">Hide &amp; Pass</button>
+        </div>
+      </div>
+      <div id="l-done" class="hidden game-stage">
+        <div class="outcome-label">All in</div>
+        <div class="outcome-sub">Everyone has seen their roll. Call bluffs out loud.</div>
+        <div class="game-ctas">
+          <button class="game-cta" id="l-again">New Round</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Craps ===== -->
+    <div id="game-craps" class="hidden">
+      <div class="game-header">
+        <div class="game-title">Craps</div>
+        <button class="game-back" data-back>Back</button>
+      </div>
+      <div class="game-rules">2d6. Tap to roll. Named outcomes like Snake Eyes (2), Yo (11), Boxcars (12), Seven Out (7).</div>
+      <div class="game-stage">
+        <div class="dice-grid" id="c-dice"></div>
+        <div class="outcome-label" id="c-outcome">&nbsp;</div>
+        <div class="outcome-sub" id="c-sub">&nbsp;</div>
+      </div>
+      <div class="game-ctas">
+        <button class="game-cta" id="c-roll">Roll</button>
+      </div>
+    </div>
+
+    <!-- ===== Monopoly ===== -->
+    <div id="game-monopoly" class="hidden">
+      <div class="game-header">
+        <div class="game-title">Monopoly</div>
+        <button class="game-back" data-back>Back</button>
+      </div>
+      <div class="game-rules">2d6. Doubles = roll again. Three doubles in a row = go to jail. Tap End Turn when done (resets the doubles counter).</div>
+      <div class="game-turn">
+        Doubles this turn <span class="game-turn-pips" id="m-pips"><span class="game-turn-pip"></span><span class="game-turn-pip"></span><span class="game-turn-pip"></span></span>
+      </div>
+      <div class="game-stage">
+        <div class="dice-grid" id="m-dice"></div>
+        <div class="outcome-label" id="m-outcome">&nbsp;</div>
+        <div class="outcome-sub" id="m-sub">&nbsp;</div>
+      </div>
+      <div class="game-ctas">
+        <button class="game-cta" id="m-roll">Roll</button>
+        <button class="game-cta secondary" id="m-end">End Turn</button>
+      </div>
+    </div>
+
+    <!-- ===== Catan ===== -->
+    <div id="game-catan" class="hidden">
+      <div class="game-header">
+        <div class="game-title">Catan</div>
+        <button class="game-back" data-back>Back</button>
+      </div>
+      <div class="game-rules">2d6 for resource production. A roll of 7 triggers the robber — everyone with 8+ cards discards half.</div>
+      <div class="game-stage">
+        <div class="dice-grid" id="k-dice"></div>
+        <div class="outcome-label" id="k-outcome">&nbsp;</div>
+        <div class="outcome-sub" id="k-sub">&nbsp;</div>
+      </div>
+      <div class="game-ctas">
+        <button class="game-cta" id="k-roll">Roll</button>
+      </div>
+      <div class="game-hint" id="k-history">No rolls yet</div>
+    </div>
+
+    <!-- ===== Backgammon ===== -->
+    <div id="game-backgammon" class="hidden">
+      <div class="game-header">
+        <div class="game-title">Backgammon</div>
+        <button class="game-back" data-back>Back</button>
+      </div>
+      <div class="game-rules">2d6. Doubles count twice — roll 3-3 and you get FOUR moves of 3, not two.</div>
+      <div class="game-stage">
+        <div class="dice-grid" id="b-dice"></div>
+        <div class="outcome-label" id="b-outcome">&nbsp;</div>
+        <div class="outcome-sub" id="b-sub">&nbsp;</div>
+      </div>
+      <div class="game-ctas">
+        <button class="game-cta" id="b-roll">Roll</button>
+      </div>
+    </div>
+
+    <!-- ===== Risk ===== -->
+    <div id="game-risk" class="hidden">
+      <div class="game-header">
+        <div class="game-title">Risk</div>
+        <button class="game-back" data-back>Back</button>
+      </div>
+      <div class="game-rules">Attacker rolls 1–3 dice, defender rolls 1–2. Highest pairs compared, ties go to defender.</div>
+      <div class="pills-label" style="margin-top:8px">Attacker dice</div>
+      <div class="pills" id="r-att-pills">
+        <button class="pill" data-count="1">1</button>
+        <button class="pill" data-count="2">2</button>
+        <button class="pill active" data-count="3">3</button>
+      </div>
+      <div class="pills-label">Defender dice</div>
+      <div class="pills" id="r-def-pills">
+        <button class="pill" data-count="1">1</button>
+        <button class="pill active" data-count="2">2</button>
+      </div>
+      <div class="game-stage">
+        <div class="risk-battle" id="r-battle">
+          <div class="risk-side">
+            <div class="risk-side-label">Attacker</div>
+            <div class="dice-grid" id="r-att-dice"></div>
+          </div>
+          <div class="risk-vs">vs</div>
+          <div class="risk-side">
+            <div class="risk-side-label">Defender</div>
+            <div class="dice-grid" id="r-def-dice"></div>
+          </div>
+        </div>
+        <div class="outcome-label" id="r-outcome">&nbsp;</div>
+        <div class="outcome-sub" id="r-sub">&nbsp;</div>
+      </div>
+      <div class="game-ctas">
+        <button class="game-cta" id="r-roll">Attack</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer class="footer">
+  <a href="https://0utput.co" target="_blank" rel="noopener">0utput.co</a> · r0ll v16
+</footer>
+
+<script>
+/* r0ll — changelog
+ * v01 · 2026-04-22 · Initial build. Single mode (1-6 dice, d4/d6/d8/d10/d12/d20) + Tournament mode (2-12 players, tie re-rolls). Session history of last 10. Haptics + optional Web Audio clack. Ephemeral by design: no localStorage. Dark mode via 4-point pattern (meta, media query, inline, JS).
+ * v02 · 2026-04-22 · Renamed Tournament → Multiplayer. Replaced names textarea with count pills (2-12) + inline name inputs. Placeholders default to "Player N" so zero typing is required; users can rename any slot if they want.
+ * v03 · 2026-04-22 · Multiplayer die now defaults to d6 and auto-scales to the smallest die that can avoid guaranteed ties (7-8→d8, 9-10→d10, 11-12→d12). Manually tapping a die locks the choice and disables auto-scaling for the session.
+ * v04 · 2026-04-22 · Multiplayer now uses sample-without-replacement: a shuffled pool of unique values is drawn from at Start, guaranteeing no ties and eliminating the re-roll loop. Die pills smaller than the player count are disabled. Tie-banner UI removed. Rank distribution remains uniform across players.
+ * v05 · 2026-04-22 · Sound toggle moved to header with Lucide-style volume icons (fixes: was hidden in multiplayer). Max-roll delight: die pulses mint-green + C-major arpeggio plays. Mode-switch plays a descending swoosh when sound is on. Single mode reordered: Count → Dice → Die Type so the dice anchor the middle of the screen.
+ * v06 · 2026-04-22 · Directional mode-switch sounds: Single → Multiplayer plays TA-DA (G4 pickup into sustained C5 fanfare with G5 sparkle), Multiplayer → Single plays DUM-DUM-DUM (three descending low triangle-wave notes G3/F3/D3).
+ * v07 · 2026-04-22 · Theme control: new icon button in header cycles Auto → Light → Dark → Auto. Auto follows system prefers-color-scheme. Only the theme preference is persisted (localStorage key `r0ll.theme`); rolls and history remain ephemeral. Inline <head> script applies the theme pre-paint to avoid a light flash on load.
+ * v08 · 2026-04-22 · Theme toggle simplified to two states: on load, defaults to system preference; tap flips to the opposite. No persistence — every session starts fresh from system. Removed 'auto' as a visible UI state. Added full OG/meta: title, description, OG tags, Twitter card, favicon, theme-color, apple-touch-icon.
+ * v09 · 2026-04-22 · Big one. (1) Pips: d6 now renders dots instead of numerals in both Single and Multiplayer modes. d4/d8/d10/d12/d20 still show numerals. (2) Games tab added with 5 presets, each with a distinct mechanic: Yahtzee (5d6, hold + 3 rolls per turn), Farkle (6d6, hold + continue or bank), D&D Stat Roll (4d6 drop lowest, shows 6-stat set), Liar's Dice (5d6, hidden rolls for pass-and-play), Craps (2d6, named outcomes like Seven Out / Snake Eyes / Boxcars). Each preset is self-contained and does not touch Single/Multiplayer logic.
+ * v10 · 2026-04-22 · Four more game presets added, turning the Games tab from a demo into a real "lost my dice" tool. (1) Monopoly: 2d6 with doubles detection, roll-again prompts, and 3rd-doubles-jail tracker. (2) Catan: 2d6 with 7-triggers-robber callout and total highlight. (3) Backgammon: 2d6 where doubles quadruple the moves (shows "3 3 3 3"). (4) Risk: attacker (1-3 dice) vs defender (1-2 dice) with sorted-pair comparison, shows losses per side.
+ * v11 · 2026-04-22 · Fixed inconsistent mode-switch sounds. TA-DA now plays whenever entering Multiplayer from anywhere (Single OR Games), and DUM-DUM-DUM plays whenever leaving Multiplayer to anywhere. Single ↔ Games still uses the neutral swoosh. Multiplayer is the only directional destination, so the cue now reliably means "you are entering/leaving the group mode."
+ * v12 · 2026-04-22 · Mode-switch sounds rewritten with cleaner logic: each destination mode has its own arrival sound, no matter where you came from. Arriving at Single = DUM-DUM-DUM, arriving at Multiplayer = TA-DA, arriving at Games = upward swoosh. Fixes the v11 issue where Multiplayer → Single and Multiplayer → Games played the same sound, and Single ↔ Games were indistinguishable.
+ * v13 · 2026-04-22 · Two new sounds scoped to inside-Games navigation. (1) Entering a specific game: an epic "studio intro" fanfare (perfect-fifth power chord C3+G3 on sawtooth, then swelling C major chord C4+E4+G4 on sine with vibrato, then triumphant C5 top note). Evokes the moment right before the movie starts. (2) Back button from a game to the picker: a quick percussive "ch-ch-ch-ch" (four short filtered-noise bursts, curtain-closing feel). Mode-switch sounds in v12 remain unchanged.
+ * v14 · 2026-04-22 · Audio production pass. (1) Built a shared effects bus with convolution reverb (1.4s decay, synthesized impulse) and feedback delay (180ms / 25% feedback) that all arena/back sounds now route through — fixes the dry, harsh quality of v13. (2) Replaced the single generic arena intro with 9 per-game intros matching each game's vibe: Yahtzee (bright dice-shake fanfare), Farkle (minor-to-major risk/reward resolution), D&D Stat Roll (medieval horn call), Liar's Dice (mysterious tritone drone), Craps (Vegas brass stab), Monopoly (bouncy classic jingle), Catan (pastoral open fifth), Backgammon (wooden diatonic walk), Risk (war drum + rising horn). The ch-ch-ch-ch back sound also routes through the bus now for consistency.
+ * v15 · 2026-04-22 · Sound toggle now cycles three states: off → sounds → spa → off. (1) "Spa mode" layers a generative ambient pad on top of app sounds — 4 sustained oscillators that slowly drift through a 4-chord progression (Am7 → Fmaj7 → Cmaj7 → Gsus2) every ~24s, each voice has slow LFO on pitch and amplitude so it never sounds static or loops. Routed through the existing reverb bus. Fades in over 2.5s when enabled, out over 1.5s when disabled. (2) Every roll across the app now gets a subtle pre-roll swell — 280ms rising triangle-wave tone that crescendos into the existing clack. Works in both sounds and spa modes. (3) Sound toggle icon now has three variants: speaker-x (off), speaker-waves (sounds), speaker-music (spa).
+ * v16 · 2026-04-22 · Removed spa/ambient pad (not quite right yet). Sound toggle is back to two states: off → on → off. Pre-roll swell kept — it's a nice touch even without the ambient bed. Bundled as index.html for GitHub deploy alongside the versioned file and OG image.
+ */
+(function() {
+  'use strict';
+
+  // ---------- Theme (two-state: light/dark) ----------
+  // On load we inherit whichever class the pre-paint script set (based on system).
+  // Tap toggles to the opposite. No persistence — next load re-reads system again.
+  function currentIsDark() {
+    return document.documentElement.classList.contains('theme-dark');
+  }
+
+  function applyTheme() {
+    var html = document.documentElement;
+    var body = document.body;
+    var isDark = currentIsDark();
+    var bg = isDark ? '#0a1f16' : '#F9F9F9';
+    var fg = isDark ? '#E4F3EE' : '#034D32';
+    html.style.background = bg;
+    html.style.color = fg;
+    if (body) {
+      body.style.background = bg;
+      body.style.color = fg;
+    }
+    // Keep the mobile browser chrome color in sync with the user's explicit choice.
+    // We set a single theme-color meta without a media query to override the media-query versions below.
+    var tc = document.getElementById('dynamic-theme-color');
+    if (!tc) {
+      tc = document.createElement('meta');
+      tc.id = 'dynamic-theme-color';
+      tc.name = 'theme-color';
+      document.head.appendChild(tc);
+    }
+    tc.setAttribute('content', bg);
+  }
+
+  // Ensure body inline styles are in sync even if the pre-paint listener didn't fire.
+  applyTheme();
+
+  // ---------- State ----------
+  var singleState = {
+    sides: 6,
+    count: 1,
+    lastRolls: [],
+    history: [],
+    rolling: false
+  };
+
+  var tState = {
+    sides: 6,
+    players: [],
+    phase: 'setup', // setup | rolling | results
+    rolling: false
+  };
+
+  var soundMode = 'off'; // 'off' | 'on'
+  function soundsEnabled() { return soundMode === 'on'; }
+
+  // ---------- Helpers ----------
+  function randInt(n) { return Math.floor(Math.random() * n) + 1; }
+
+  function vibrate(pattern) {
+    if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} }
+  }
+
+  var audioCtx = null;
+  function playClack() {
+    if (!soundsEnabled()) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var o = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      o.type = 'triangle';
+      o.frequency.value = 180 + Math.random() * 120;
+      g.gain.setValueAtTime(0.14, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.07);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      o.stop(audioCtx.currentTime + 0.08);
+    } catch (e) {}
+  }
+
+  // Delight: ascending C-major arpeggio (C5, E5, G5) when any die lands on its max.
+  function playJackpot() {
+    if (!soundsEnabled()) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var now = audioCtx.currentTime;
+      var notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+      notes.forEach(function(freq, i) {
+        var start = now + i * 0.08;
+        var o = audioCtx.createOscillator();
+        var g = audioCtx.createGain();
+        o.type = 'sine';
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.exponentialRampToValueAtTime(0.22, start + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(start);
+        o.stop(start + 0.34);
+      });
+    } catch (e) {}
+  }
+
+  // Delight: Single → Multiplayer gets TA-DA (pickup G4 into sustained C5 fanfare with G5 sparkle).
+  function playTada() {
+    if (!soundsEnabled()) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var now = audioCtx.currentTime;
+      // Pickup: short G4
+      var o1 = audioCtx.createOscillator();
+      var g1 = audioCtx.createGain();
+      o1.type = 'sine';
+      o1.frequency.value = 392.00; // G4
+      g1.gain.setValueAtTime(0.0001, now);
+      g1.gain.exponentialRampToValueAtTime(0.18, now + 0.012);
+      g1.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+      o1.connect(g1); g1.connect(audioCtx.destination);
+      o1.start(now); o1.stop(now + 0.13);
+      // Fanfare: sustained C5
+      var o2 = audioCtx.createOscillator();
+      var g2 = audioCtx.createGain();
+      o2.type = 'sine';
+      o2.frequency.value = 523.25; // C5
+      g2.gain.setValueAtTime(0.0001, now + 0.09);
+      g2.gain.exponentialRampToValueAtTime(0.24, now + 0.11);
+      g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.52);
+      o2.connect(g2); g2.connect(audioCtx.destination);
+      o2.start(now + 0.09); o2.stop(now + 0.54);
+      // Sparkle: G5 overtone
+      var o3 = audioCtx.createOscillator();
+      var g3 = audioCtx.createGain();
+      o3.type = 'sine';
+      o3.frequency.value = 783.99; // G5
+      g3.gain.setValueAtTime(0.0001, now + 0.09);
+      g3.gain.exponentialRampToValueAtTime(0.09, now + 0.13);
+      g3.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+      o3.connect(g3); g3.connect(audioCtx.destination);
+      o3.start(now + 0.09); o3.stop(now + 0.44);
+    } catch (e) {}
+  }
+
+  // Neutral swoosh for mode switches that involve games mode (no directional narrative).
+  function playGameSwoosh() {
+    if (!soundsEnabled()) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var now = audioCtx.currentTime;
+      var o = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(520, now);
+      o.frequency.exponentialRampToValueAtTime(880, now + 0.14);
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(now); o.stop(now + 0.2);
+    } catch (e) {}
+  }
+
+  // Descending sawtooth "bust" for Farkle losses or bad outcomes.
+  function playBust() {
+    if (!soundsEnabled()) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var now = audioCtx.currentTime;
+      var o = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(300, now);
+      o.frequency.exponentialRampToValueAtTime(80, now + 0.42);
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.16, now + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.46);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(now); o.stop(now + 0.48);
+    } catch (e) {}
+  }
+
+  // ======================================================================
+  // AUDIO FX BUS — shared reverb + delay send for arena/back sounds.
+  // Sounds route some signal dry to destination and some to this bus for ambience.
+  // Built once on first use, reused forever.
+  // ======================================================================
+  var fxBus = null;
+  function getFxBus() {
+    if (!audioCtx) return null;
+    if (fxBus) return fxBus;
+    // Synthesize a short decaying stereo impulse response for convolution reverb.
+    // Length = 1.4s, decay curve = exp^2.5 so it fades naturally.
+    var length = Math.floor(audioCtx.sampleRate * 1.4);
+    var impulse = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+    for (var ch = 0; ch < 2; ch++) {
+      var data = impulse.getChannelData(ch);
+      for (var i = 0; i < length; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5);
+      }
+    }
+    var reverb = audioCtx.createConvolver();
+    reverb.buffer = impulse;
+    var reverbGain = audioCtx.createGain();
+    reverbGain.gain.value = 0.32;
+    reverb.connect(reverbGain);
+    reverbGain.connect(audioCtx.destination);
+
+    // Feedback delay for depth and echo trails
+    var delay = audioCtx.createDelay(0.6);
+    delay.delayTime.value = 0.18;
+    var feedback = audioCtx.createGain();
+    feedback.gain.value = 0.28;
+    delay.connect(feedback);
+    feedback.connect(delay);
+    var delayGain = audioCtx.createGain();
+    delayGain.gain.value = 0.18;
+    delay.connect(delayGain);
+    delayGain.connect(audioCtx.destination);
+
+    // Tame high frequencies before the reverb to prevent harsh splash
+    var lowpass = audioCtx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 5000;
+    lowpass.Q.value = 0.7;
+    lowpass.connect(reverb);
+    lowpass.connect(delay);
+
+    fxBus = { input: lowpass, destination: audioCtx.destination };
+    return fxBus;
+  }
+
+  // Helper: create an oscillator voice that sends some signal dry and some to the FX bus.
+  // Returns the gain node so callers can shape envelopes on it.
+  function arenaVoice(type, freq, dryLevel, wetLevel) {
+    var o = audioCtx.createOscillator();
+    o.type = type;
+    o.frequency.value = freq;
+    var g = audioCtx.createGain();
+    o.connect(g);
+    // Dry send
+    var dry = audioCtx.createGain();
+    dry.gain.value = dryLevel;
+    g.connect(dry); dry.connect(audioCtx.destination);
+    // Wet send (FX bus)
+    var bus = getFxBus();
+    if (bus && wetLevel > 0) {
+      var wet = audioCtx.createGain();
+      wet.gain.value = wetLevel;
+      g.connect(wet); wet.connect(bus.input);
+    }
+    return { osc: o, gain: g };
+  }
+
+  // Lightweight helper to ensure audio context is live before playing
+  function audioReady() {
+    if (!soundsEnabled()) return false;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // ======================================================================
+  // PRE-ROLL SWELL — subtle rising triangle tone before the clack.
+  // 280ms, fades in, glides up a minor third, then hands off to the clack.
+  // Fires on every roll across the app (Single, Multiplayer, Games).
+  // ======================================================================
+  function playPreRollSwell() {
+    if (!audioReady()) return;
+    try {
+      var now = audioCtx.currentTime;
+      var o = audioCtx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(220, now);         // A3
+      o.frequency.exponentialRampToValueAtTime(277.18, now + 0.25); // C#4 — minor third up
+      var g = audioCtx.createGain();
+      o.connect(g);
+      var dry = audioCtx.createGain();
+      dry.gain.value = 0.06; // quiet, it's a build-up not a main event
+      g.connect(dry); dry.connect(audioCtx.destination);
+      var bus = getFxBus();
+      if (bus) {
+        var wet = audioCtx.createGain();
+        wet.gain.value = 0.3;
+        g.connect(wet); wet.connect(bus.input);
+      }
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(1.0, now + 0.18);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+      o.start(now); o.stop(now + 0.32);
+    } catch (e) {}
+  }
+
+  // ======================================================================
+  // PER-GAME INTRO SOUNDS — each ~700-1100ms with its own character.
+  // ======================================================================
+
+  // Yahtzee — bright dice-shake fanfare (noise clatter + C major arpeggio)
+  function introYahtzee() {
+    if (!audioReady()) return;
+    try {
+      var now = audioCtx.currentTime;
+      // Dice-shake clatter (short filtered noise burst)
+      var bufferSize = Math.floor(audioCtx.sampleRate * 0.15);
+      var buf = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < bufferSize; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 1.5);
+      var src = audioCtx.createBufferSource(); src.buffer = buf;
+      var filt = audioCtx.createBiquadFilter(); filt.type = 'bandpass'; filt.frequency.value = 2000; filt.Q.value = 2;
+      var ng = audioCtx.createGain(); ng.gain.value = 0.12;
+      src.connect(filt); filt.connect(ng); ng.connect(audioCtx.destination);
+      var bus = getFxBus();
+      if (bus) { var nw = audioCtx.createGain(); nw.gain.value = 0.25; filt.connect(nw); nw.connect(bus.input); }
+      src.start(now); src.stop(now + 0.18);
+      // Ascending arpeggio C5-E5-G5-C6
+      var notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach(function(f, i) {
+        var start = now + 0.12 + i * 0.08;
+        var v = arenaVoice('triangle', f, 0.18, 0.3);
+        v.gain.gain.setValueAtTime(0.0001, start);
+        v.gain.gain.exponentialRampToValueAtTime(1.0, start + 0.015);
+        v.gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.3);
+        v.osc.start(start); v.osc.stop(start + 0.32);
+      });
+    } catch (e) {}
+  }
+
+  // Farkle — minor to major resolution (risk pays off)
+  function introFarkle() {
+    if (!audioReady()) return;
+    try {
+      var now = audioCtx.currentTime;
+      // Cm chord (C-Eb-G) brief
+      [261.63, 311.13, 392.00].forEach(function(f) {
+        var v = arenaVoice('sine', f, 0.12, 0.4);
+        v.gain.gain.setValueAtTime(0.0001, now);
+        v.gain.gain.exponentialRampToValueAtTime(1.0, now + 0.1);
+        v.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+        v.osc.start(now); v.osc.stop(now + 0.44);
+      });
+      // Resolve to C major (C-E-G)
+      [261.63, 329.63, 392.00].forEach(function(f) {
+        var start = now + 0.4;
+        var v = arenaVoice('sine', f, 0.14, 0.45);
+        v.gain.gain.setValueAtTime(0.0001, start);
+        v.gain.gain.exponentialRampToValueAtTime(1.0, start + 0.12);
+        v.gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.7);
+        v.osc.start(start); v.osc.stop(start + 0.74);
+      });
+      // Bass root for weight
+      var bass = arenaVoice('sawtooth', 65.41, 0.06, 0.18); // C2
+      var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400;
+      bass.gain.disconnect();
+      bass.gain.connect(lp);
+      var bdry = audioCtx.createGain(); bdry.gain.value = 0.06; lp.connect(bdry); bdry.connect(audioCtx.destination);
+      bass.gain.gain.setValueAtTime(0.0001, now);
+      bass.gain.gain.exponentialRampToValueAtTime(1.0, now + 0.05);
+      bass.gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.05);
+      bass.osc.start(now); bass.osc.stop(now + 1.1);
+    } catch (e) {}
+  }
+
+  // D&D Stat Roll — medieval horn call, perfect-fifth fanfare
+  function introStatroll() {
+    if (!audioReady()) return;
+    try {
+      var now = audioCtx.currentTime;
+      // Horn call: G3 - D4 - G4 (classic fifth + octave)
+      var melody = [{f: 196.00, t: 0, d: 0.25}, {f: 293.66, t: 0.2, d: 0.25}, {f: 392.00, t: 0.4, d: 0.55}];
+      melody.forEach(function(note) {
+        var start = now + note.t;
+        // Square wave lowpassed = French horn-ish
+        var o = audioCtx.createOscillator(); o.type = 'square'; o.frequency.value = note.f;
+        var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800; lp.Q.value = 1;
+        var g = audioCtx.createGain();
+        o.connect(lp); lp.connect(g);
+        var dry = audioCtx.createGain(); dry.gain.value = 0.14; g.connect(dry); dry.connect(audioCtx.destination);
+        var bus = getFxBus();
+        if (bus) { var wet = audioCtx.createGain(); wet.gain.value = 0.5; g.connect(wet); wet.connect(bus.input); }
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.exponentialRampToValueAtTime(1.0, start + 0.06);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + note.d);
+        o.start(start); o.stop(start + note.d + 0.02);
+      });
+    } catch (e) {}
+  }
+
+  // Liar's Dice — mysterious tritone drone with tremolo
+  function introLiars() {
+    if (!audioReady()) return;
+    try {
+      var now = audioCtx.currentTime;
+      // Low drone A2
+      var d1 = arenaVoice('sine', 110.00, 0.10, 0.4);
+      d1.gain.gain.setValueAtTime(0.0001, now);
+      d1.gain.gain.exponentialRampToValueAtTime(1.0, now + 0.2);
+      d1.gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
+      d1.osc.start(now); d1.osc.stop(now + 1.15);
+      // Tritone above — Eb3
+      var d2 = arenaVoice('sine', 155.56, 0.08, 0.45);
+      d2.gain.gain.setValueAtTime(0.0001, now + 0.15);
+      d2.gain.gain.exponentialRampToValueAtTime(1.0, now + 0.35);
+      d2.gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
+      d2.osc.start(now + 0.15); d2.osc.stop(now + 1.15);
+      // Tremolo high melody A4 - Eb5 - D5 (mysterious descent)
+      var melody = [{f: 440, t: 0.3}, {f: 622.25, t: 0.55}, {f: 587.33, t: 0.8}];
+      melody.forEach(function(note) {
+        var start = now + note.t;
+        var o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.value = note.f;
+        var lfo = audioCtx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 8;
+        var lfoG = audioCtx.createGain(); lfoG.gain.value = 6;
+        lfo.connect(lfoG); lfoG.connect(o.frequency);
+        var g = audioCtx.createGain();
+        o.connect(g);
+        var dry = audioCtx.createGain(); dry.gain.value = 0.08; g.connect(dry); dry.connect(audioCtx.destination);
+        var bus = getFxBus(); if (bus) { var wet = audioCtx.createGain(); wet.gain.value = 0.35; g.connect(wet); wet.connect(bus.input); }
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.exponentialRampToValueAtTime(1.0, start + 0.06);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + 0.3);
+        o.start(start); o.stop(start + 0.32);
+        lfo.start(start); lfo.stop(start + 0.32);
+      });
+    } catch (e) {}
+  }
+
+  // Craps — Vegas brass stab, bright punchy chord hit
+  function introCraps() {
+    if (!audioReady()) return;
+    try {
+      var now = audioCtx.currentTime;
+      // Brass stab: C major chord (C4-E4-G4) on square with filter sweep
+      [261.63, 329.63, 392.00].forEach(function(f) {
+        var o = audioCtx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+        var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(800, now);
+        lp.frequency.exponentialRampToValueAtTime(3500, now + 0.15);
+        lp.frequency.exponentialRampToValueAtTime(1500, now + 0.5);
+        lp.Q.value = 4;
+        var g = audioCtx.createGain();
+        o.connect(lp); lp.connect(g);
+        var dry = audioCtx.createGain(); dry.gain.value = 0.08; g.connect(dry); dry.connect(audioCtx.destination);
+        var bus = getFxBus(); if (bus) { var wet = audioCtx.createGain(); wet.gain.value = 0.4; g.connect(wet); wet.connect(bus.input); }
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(1.0, now + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+        o.start(now); o.stop(now + 0.58);
+      });
+      // Higher accent: C5 triangle quick
+      var accent = arenaVoice('triangle', 523.25, 0.14, 0.35);
+      accent.gain.gain.setValueAtTime(0.0001, now + 0.08);
+      accent.gain.gain.exponentialRampToValueAtTime(1.0, now + 0.12);
+      accent.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+      accent.osc.start(now + 0.08); accent.osc.stop(now + 0.52);
+    } catch (e) {}
+  }
+
+  // Monopoly — bouncy classic jingle, C-E-G-E-C up-down
+  function introMonopoly() {
+    if (!audioReady()) return;
+    try {
+      var now = audioCtx.currentTime;
+      var notes = [
+        {f: 523.25, t: 0, d: 0.15},    // C5
+        {f: 659.25, t: 0.1, d: 0.15},  // E5
+        {f: 783.99, t: 0.2, d: 0.2},   // G5
+        {f: 659.25, t: 0.35, d: 0.15}, // E5
+        {f: 523.25, t: 0.45, d: 0.35}  // C5 held
+      ];
+      notes.forEach(function(note) {
+        var start = now + note.t;
+        var v = arenaVoice('triangle', note.f, 0.16, 0.35);
+        v.gain.gain.setValueAtTime(0.0001, start);
+        v.gain.gain.exponentialRampToValueAtTime(1.0, start + 0.02);
+        v.gain.gain.exponentialRampToValueAtTime(0.0001, start + note.d);
+        v.osc.start(start); v.osc.stop(start + note.d + 0.02);
+      });
+      // Low bass root for support
+      var bass = arenaVoice('triangle', 130.81, 0.08, 0.2); // C3
+      bass.gain.gain.setValueAtTime(0.0001, now);
+      bass.gain.gain.exponentialRampToValueAtTime(1.0, now + 0.03);
+      bass.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.85);
+      bass.osc.start(now); bass.osc.stop(now + 0.88);
+    } catch (e) {}
+  }
+
+  // Catan — pastoral open fifth with warm flute-like motif
+  function introCatan() {
+    if (!audioReady()) return;
+    try {
+      var now = audioCtx.currentTime;
+      // Open fifth C3 + G3 sustained
+      [130.81, 196.00].forEach(function(f) {
+        var v = arenaVoice('sine', f, 0.10, 0.45);
+        v.gain.gain.setValueAtTime(0.0001, now);
+        v.gain.gain.exponentialRampToValueAtTime(1.0, now + 0.25);
+        v.gain.gain.exponentialRampToValueAtTime(0.4, now + 0.8);
+        v.gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.15);
+        v.osc.start(now); v.osc.stop(now + 1.2);
+      });
+      // Flute-like melody C5-D5-E5 (pastoral ascent)
+      [{f: 523.25, t: 0.2}, {f: 587.33, t: 0.38}, {f: 659.25, t: 0.56}].forEach(function(note) {
+        var start = now + note.t;
+        var v = arenaVoice('sine', note.f, 0.14, 0.4);
+        v.gain.gain.setValueAtTime(0.0001, start);
+        v.gain.gain.exponentialRampToValueAtTime(1.0, start + 0.05);
+        v.gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.28);
+        v.osc.start(start); v.osc.stop(start + 0.3);
+      });
+    } catch (e) {}
+  }
+
+  // Backgammon — wooden diatonic walk, marimba-like
+  function introBackgammon() {
+    if (!audioReady()) return;
+    try {
+      var now = audioCtx.currentTime;
+      // Short plucky notes C4-D4-E4-F4-G4 on triangle with fast decay
+      var walk = [261.63, 293.66, 329.63, 349.23, 392.00];
+      walk.forEach(function(f, i) {
+        var start = now + i * 0.1;
+        var v = arenaVoice('triangle', f, 0.14, 0.4);
+        v.gain.gain.setValueAtTime(0.0001, start);
+        v.gain.gain.exponentialRampToValueAtTime(1.0, start + 0.008);
+        v.gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+        v.osc.start(start); v.osc.stop(start + 0.24);
+      });
+      // Final chord hit — G4 + C5 + E5
+      [392.00, 523.25, 659.25].forEach(function(f) {
+        var start = now + 0.55;
+        var v = arenaVoice('triangle', f, 0.11, 0.45);
+        v.gain.gain.setValueAtTime(0.0001, start);
+        v.gain.gain.exponentialRampToValueAtTime(1.0, start + 0.02);
+        v.gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.55);
+        v.osc.start(start); v.osc.stop(start + 0.58);
+      });
+    } catch (e) {}
+  }
+
+  // Risk — war drum + rising horn call, military grandeur
+  function introRisk() {
+    if (!audioReady()) return;
+    try {
+      var now = audioCtx.currentTime;
+      // Three war-drum kicks: low sine with fast pitch drop
+      [0, 0.18, 0.36].forEach(function(t) {
+        var start = now + t;
+        var o = audioCtx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(120, start);
+        o.frequency.exponentialRampToValueAtTime(45, start + 0.12);
+        var g = audioCtx.createGain();
+        o.connect(g);
+        var dry = audioCtx.createGain(); dry.gain.value = 0.22; g.connect(dry); dry.connect(audioCtx.destination);
+        var bus = getFxBus(); if (bus) { var wet = audioCtx.createGain(); wet.gain.value = 0.25; g.connect(wet); wet.connect(bus.input); }
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.exponentialRampToValueAtTime(1.0, start + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + 0.2);
+        o.start(start); o.stop(start + 0.22);
+      });
+      // Rising horn call G3-A3-B3-C4 on square (filtered)
+      var horn = [{f: 196.00, t: 0.4}, {f: 220.00, t: 0.55}, {f: 246.94, t: 0.7}, {f: 261.63, t: 0.85, d: 0.45}];
+      horn.forEach(function(note) {
+        var start = now + note.t;
+        var dur = note.d || 0.18;
+        var o = audioCtx.createOscillator(); o.type = 'square'; o.frequency.value = note.f;
+        var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1600; lp.Q.value = 0.8;
+        var g = audioCtx.createGain();
+        o.connect(lp); lp.connect(g);
+        var dry = audioCtx.createGain(); dry.gain.value = 0.1; g.connect(dry); dry.connect(audioCtx.destination);
+        var bus = getFxBus(); if (bus) { var wet = audioCtx.createGain(); wet.gain.value = 0.5; g.connect(wet); wet.connect(bus.input); }
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.exponentialRampToValueAtTime(1.0, start + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+        o.start(start); o.stop(start + dur + 0.02);
+      });
+    } catch (e) {}
+  }
+
+  // Dispatcher — called from showGame
+  var GAME_INTROS = {
+    yahtzee: introYahtzee,
+    farkle: introFarkle,
+    statroll: introStatroll,
+    liars: introLiars,
+    craps: introCraps,
+    monopoly: introMonopoly,
+    catan: introCatan,
+    backgammon: introBackgammon,
+    risk: introRisk
+  };
+  function playGameIntro(name) {
+    var fn = GAME_INTROS[name];
+    if (fn) fn();
+  }
+
+  // Soft "ch-ch-ch-ch" for Back — four noise bursts routed through the FX bus.
+  function playChChChCh() {
+    if (!audioReady()) return;
+    try {
+      var now = audioCtx.currentTime;
+      var bus = getFxBus();
+      var bufferSize = Math.floor(audioCtx.sampleRate * 0.08);
+      var buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      var data = buffer.getChannelData(0);
+      for (var i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      var hitFilters = [1800, 2000, 2200, 2400]; // lower & softer than v13
+      hitFilters.forEach(function(cutoff, i) {
+        var start = now + i * 0.075;
+        var src = audioCtx.createBufferSource(); src.buffer = buffer;
+        var filter = audioCtx.createBiquadFilter();
+        filter.type = 'bandpass'; filter.frequency.value = cutoff; filter.Q.value = 6;
+        var g = audioCtx.createGain();
+        var vol = (i === 3) ? 0.07 : 0.11;
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.exponentialRampToValueAtTime(vol, start + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + (i === 3 ? 0.14 : 0.06));
+        src.connect(filter); filter.connect(g); g.connect(audioCtx.destination);
+        // Send to reverb bus
+        if (bus) {
+          var wet = audioCtx.createGain(); wet.gain.value = 0.4;
+          filter.connect(wet); wet.connect(bus.input);
+        }
+        src.start(start);
+        src.stop(start + 0.16);
+      });
+    } catch (e) {}
+  }
+
+  // Delight: Multiplayer → Single gets DUM-DUM-DUM (three descending low triangle notes).
+  function playDumDumDum() {
+    if (!soundsEnabled()) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var now = audioCtx.currentTime;
+      var notes = [196.00, 174.61, 146.83]; // G3, F3, D3
+      notes.forEach(function(freq, i) {
+        var start = now + i * 0.16;
+        var o = audioCtx.createOscillator();
+        var g = audioCtx.createGain();
+        o.type = 'triangle';
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.exponentialRampToValueAtTime(0.26, start + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + 0.14);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(start); o.stop(start + 0.16);
+      });
+    } catch (e) {}
+  }
+
+  function $(id) { return document.getElementById(id); }
+
+  // ---------- Pip rendering (d6 only) ----------
+  // Returns an SVG string for the pip pattern of a given d6 face. viewBox is 100x100.
+  var PIP_POSITIONS = {
+    1: [[50,50]],
+    2: [[28,28],[72,72]],
+    3: [[28,28],[50,50],[72,72]],
+    4: [[28,28],[72,28],[28,72],[72,72]],
+    5: [[28,28],[72,28],[50,50],[28,72],[72,72]],
+    6: [[28,25],[28,50],[28,75],[72,25],[72,50],[72,75]]
+  };
+  function pipSvg(value) {
+    var pips = PIP_POSITIONS[value] || [];
+    var circles = pips.map(function(p) {
+      return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="8.5" fill="currentColor"/>';
+    }).join('');
+    return '<svg class="die-pips" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' + circles + '</svg>';
+  }
+  // Renders either pips (d6) or a numeral (anything else) as the visible die face contents.
+  function faceContent(sides, value) {
+    if (sides === 6 && value >= 1 && value <= 6) return pipSvg(value);
+    return String(value);
+  }
+
+  // ---------- Mode toggle ----------
+  var modeBtns = document.querySelectorAll('.mode-btn');
+  var singleSection = $('single-mode');
+  var tournamentSection = $('tournament-mode');
+  var gamesSection = $('games-mode');
+  var currentMode = 'single';
+
+  modeBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var mode = btn.dataset.mode;
+      if (mode === currentMode) return;
+      var prevMode = currentMode;
+      modeBtns.forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      singleSection.classList.toggle('hidden', mode !== 'single');
+      tournamentSection.classList.toggle('hidden', mode !== 'multiplayer');
+      gamesSection.classList.toggle('hidden', mode !== 'games');
+      currentMode = mode;
+      // Each destination mode has its own arrival sound. One rule: whatever you enter plays its signature.
+      // Arriving at Multiplayer = TA-DA. Arriving at Games = upward swoosh. Arriving at Single = DUM-DUM-DUM.
+      if (mode === 'multiplayer') playTada();
+      else if (mode === 'games') playGameSwoosh();
+      else playDumDumDum(); // single
+    });
+  });
+
+  // ---------- Sound toggle ----------
+  var soundToggle = $('sound-toggle');
+
+  function updateSoundButton() {
+    soundToggle.setAttribute('data-mode', soundMode);
+    var on = soundMode === 'on';
+    soundToggle.setAttribute('title', on ? 'Sound: on · tap to turn off' : 'Sound: off · tap to turn on');
+    soundToggle.setAttribute('aria-label', on ? 'Sound on — tap to turn off' : 'Sound off — tap to turn on');
+  }
+
+  soundToggle.addEventListener('click', function(e) {
+    e.stopPropagation();
+    soundMode = soundMode === 'off' ? 'on' : 'off';
+    updateSoundButton();
+    if (soundMode === 'on') playClack(); // confirmation chirp
+  });
+
+  updateSoundButton();
+
+  // ---------- Theme toggle button ----------
+  var themeToggle = $('theme-toggle');
+
+  function updateThemeButton() {
+    var isDark = currentIsDark();
+    themeToggle.setAttribute('title', isDark ? 'Switch to light' : 'Switch to dark');
+    themeToggle.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
+  }
+
+  themeToggle.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var html = document.documentElement;
+    var goingDark = !currentIsDark();
+    html.classList.toggle('theme-dark', goingDark);
+    html.classList.toggle('theme-light', !goingDark);
+    applyTheme();
+    updateThemeButton();
+  });
+
+  updateThemeButton();
+
+  // ---------- Single mode ----------
+  var dieTypePills = document.querySelectorAll('#die-type-pills .pill');
+  var countPills = document.querySelectorAll('#count-pills .pill');
+  var diceGrid = $('dice-grid');
+  var diceArea = $('dice-area');
+  var sumDisplay = $('sum-display');
+  var sumValue = $('sum-value');
+  var tapHint = $('tap-hint');
+  var historyList = $('history-list');
+
+  dieTypePills.forEach(function(p) {
+    p.addEventListener('click', function() {
+      if (singleState.rolling) return;
+      dieTypePills.forEach(function(x) { x.classList.remove('active'); });
+      p.classList.add('active');
+      singleState.sides = parseInt(p.dataset.sides, 10);
+      renderDiceInitial();
+    });
+  });
+
+  countPills.forEach(function(p) {
+    p.addEventListener('click', function() {
+      if (singleState.rolling) return;
+      countPills.forEach(function(x) { x.classList.remove('active'); });
+      p.classList.add('active');
+      singleState.count = parseInt(p.dataset.count, 10);
+      renderDiceInitial();
+    });
+  });
+
+  function renderDiceInitial() {
+    diceGrid.innerHTML = '';
+    for (var i = 0; i < singleState.count; i++) {
+      var die = document.createElement('div');
+      die.className = 'die';
+      die.innerHTML = '<div class="die-face">—</div><div class="die-type">d' + singleState.sides + '</div>';
+      diceGrid.appendChild(die);
+    }
+    sumDisplay.classList.add('hidden');
+    singleState.lastRolls = [];
+  }
+
+  function setDieFace(dieEl, sides, value) {
+    var face = dieEl.querySelector('.die-face');
+    if (sides === 6 && value >= 1 && value <= 6) {
+      face.innerHTML = pipSvg(value);
+    } else {
+      face.textContent = String(value);
+    }
+  }
+
+  function rollSingle() {
+    if (singleState.rolling) return;
+    singleState.rolling = true;
+    tapHint.classList.add('dim');
+    playPreRollSwell();
+    vibrate(40);
+
+    var dice = diceGrid.querySelectorAll('.die');
+    dice.forEach(function(d) { d.classList.add('rolling'); });
+
+    var spinDuration = 650;
+    var start = Date.now();
+    var iv = setInterval(function() {
+      dice.forEach(function(d) {
+        setDieFace(d, singleState.sides, randInt(singleState.sides));
+      });
+      playClack();
+      if (Date.now() - start > spinDuration) {
+        clearInterval(iv);
+        finalize();
+      }
+    }, 70);
+
+    function finalize() {
+      var rolls = [];
+      var anyMax = false;
+      dice.forEach(function(d) {
+        var r = randInt(singleState.sides);
+        rolls.push(r);
+        setDieFace(d, singleState.sides, r);
+        d.classList.remove('rolling');
+        if (r === singleState.sides) {
+          anyMax = true;
+          // Restart animation even if class was still present from a prior roll
+          d.classList.remove('max-roll');
+          void d.offsetWidth;
+          d.classList.add('max-roll');
+          setTimeout((function(el) {
+            return function() { el.classList.remove('max-roll'); };
+          })(d), 650);
+        }
+      });
+      singleState.lastRolls = rolls;
+      singleState.rolling = false;
+      tapHint.classList.remove('dim');
+      vibrate([15, 30, 25]);
+
+      if (rolls.length > 1) {
+        var sum = rolls.reduce(function(a, b) { return a + b; }, 0);
+        sumValue.textContent = sum;
+        sumDisplay.classList.remove('hidden');
+      } else {
+        sumDisplay.classList.add('hidden');
+      }
+      if (anyMax) playJackpot();
+      addToHistory(rolls);
+    }
+  }
+
+  function addToHistory(rolls) {
+    singleState.history.unshift({
+      sides: singleState.sides,
+      count: rolls.length,
+      rolls: rolls.slice(),
+      sum: rolls.reduce(function(a, b) { return a + b; }, 0)
+    });
+    if (singleState.history.length > 10) singleState.history.pop();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    if (singleState.history.length === 0) {
+      historyList.innerHTML = '<div class="history-empty">No rolls yet</div>';
+      return;
+    }
+    historyList.innerHTML = singleState.history.map(function(h) {
+      var rollsStr = h.count > 1 ? h.rolls.join(' + ') + ' = ' + h.sum : String(h.rolls[0]);
+      return '<div class="history-item"><span>' + h.count + ' × d' + h.sides + '</span><span class="rolls">' + rollsStr + '</span></div>';
+    }).join('');
+  }
+
+  diceArea.addEventListener('click', rollSingle);
+  renderDiceInitial();
+
+  // ---------- Tournament mode ----------
+  var tDiePills = document.querySelectorAll('#t-die-type-pills .pill');
+  var tSetup = $('t-setup');
+  var tRolling = $('t-rolling');
+  var tResults = $('t-results');
+  var startBtn = $('start-tournament');
+  var currentName = $('current-name');
+  var progressEl = $('progress');
+  var tDiceArea = $('t-dice-area');
+  var tDiceGrid = $('t-dice-grid');
+  var tRolls = $('t-rolls');
+  var resultsList = $('results-list');
+  var tResetBtn = $('t-reset');
+  var tCancelBtn = $('t-cancel');
+  var nameRowsEl = $('name-rows');
+  var playerCountPills = document.querySelectorAll('#player-count-pills .pill');
+
+  var playerCount = 2;
+  var customNames = []; // index-aligned; empty string means "use Player N default"
+  var dieManuallySet = false; // once true, stop auto-scaling die from player count
+  var rollPool = []; // shuffled pool of unique values, drawn from on each player roll
+
+  function autoDieForCount(n) {
+    if (n <= 6) return 6;
+    if (n <= 8) return 8;
+    if (n <= 10) return 10;
+    return 12;
+  }
+
+  function setActiveDie(sides) {
+    tState.sides = sides;
+    tDiePills.forEach(function(x) {
+      x.classList.toggle('active', parseInt(x.dataset.sides, 10) === sides);
+    });
+  }
+
+  function updateDiePillAvailability() {
+    tDiePills.forEach(function(p) {
+      var sides = parseInt(p.dataset.sides, 10);
+      p.disabled = sides < playerCount;
+    });
+  }
+
+  function initRollPool() {
+    var vals = [];
+    for (var i = 1; i <= tState.sides; i++) vals.push(i);
+    // Fisher-Yates shuffle
+    for (var j = vals.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var tmp = vals[j]; vals[j] = vals[k]; vals[k] = tmp;
+    }
+    rollPool = vals.slice(0, tState.players.length);
+  }
+
+  tDiePills.forEach(function(p) {
+    p.addEventListener('click', function() {
+      if (p.disabled) return;
+      var sides = parseInt(p.dataset.sides, 10);
+      if (sides < playerCount) return;
+      dieManuallySet = true;
+      setActiveDie(sides);
+    });
+  });
+
+  playerCountPills.forEach(function(p) {
+    p.addEventListener('click', function() {
+      playerCountPills.forEach(function(x) { x.classList.remove('active'); });
+      p.classList.add('active');
+      playerCount = parseInt(p.dataset.count, 10);
+      customNames = customNames.slice(0, playerCount);
+      renderNameRows();
+      // If current die can no longer accommodate the count, fall back to auto
+      if (tState.sides < playerCount) dieManuallySet = false;
+      if (!dieManuallySet) {
+        setActiveDie(autoDieForCount(playerCount));
+      }
+      updateDiePillAvailability();
+    });
+  });
+
+  updateDiePillAvailability();
+
+  function renderNameRows() {
+    var html = '';
+    for (var i = 0; i < playerCount; i++) {
+      var val = customNames[i] ? escapeHtml(customNames[i]) : '';
+      html += '<div class="name-row">' +
+        '<span class="name-row-num">' + (i + 1) + '</span>' +
+        '<input type="text" class="name-row-input" data-idx="' + i + '" placeholder="Player ' + (i + 1) + '" value="' + val + '" maxlength="40" autocomplete="off" autocapitalize="words">' +
+      '</div>';
+    }
+    nameRowsEl.innerHTML = html;
+    nameRowsEl.querySelectorAll('.name-row-input').forEach(function(inp) {
+      inp.addEventListener('input', function() {
+        var idx = parseInt(inp.dataset.idx, 10);
+        customNames[idx] = inp.value;
+      });
+    });
+  }
+
+  renderNameRows();
+
+  startBtn.addEventListener('click', function() {
+    var names = [];
+    for (var i = 0; i < playerCount; i++) {
+      var n = (customNames[i] || '').trim();
+      if (!n) n = 'Player ' + (i + 1);
+      names.push(n);
+    }
+    tState.players = names.map(function(n) { return { name: n, roll: null }; });
+    tState.phase = 'rolling';
+    initRollPool();
+    tSetup.classList.add('hidden');
+    tResults.classList.add('hidden');
+    tRolling.classList.remove('hidden');
+    renderTRolling();
+  });
+
+  function nextToRoll() {
+    for (var i = 0; i < tState.players.length; i++) {
+      if (tState.players[i].roll === null) return i;
+    }
+    return -1;
+  }
+
+  function renderTRolling() {
+    var idx = nextToRoll();
+    if (idx < 0) return;
+    var p = tState.players[idx];
+    currentName.textContent = p.name;
+
+    var remaining = tState.players.filter(function(x) { return x.roll === null; }).length;
+    var total = tState.players.length;
+    var done = total - remaining;
+    progressEl.textContent = (done + 1) + ' of ' + total;
+
+    tDiceGrid.innerHTML = '<div class="die"><div class="die-face">—</div><div class="die-type">d' + tState.sides + '</div></div>';
+
+    tRolls.innerHTML = tState.players.map(function(pl, i) {
+      var cls = 't-roll';
+      var val = '—';
+      if (pl.roll !== null) {
+        cls += ' done';
+        val = String(pl.roll);
+      } else if (i === idx) {
+        cls += ' active';
+        val = 'up next';
+      } else {
+        val = 'waiting';
+      }
+      return '<div class="' + cls + '"><span class="name">' + escapeHtml(pl.name) + '</span><span class="val">' + val + '</span></div>';
+    }).join('');
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function rollTournament() {
+    if (tState.rolling) return;
+    var idx = nextToRoll();
+    if (idx < 0) return;
+    tState.rolling = true;
+    playPreRollSwell();
+    vibrate(40);
+
+    var die = tDiceGrid.querySelector('.die');
+    die.classList.add('rolling');
+
+    var spinDuration = 650;
+    var start = Date.now();
+    var iv = setInterval(function() {
+      setDieFace(die, tState.sides, randInt(tState.sides));
+      playClack();
+      if (Date.now() - start > spinDuration) {
+        clearInterval(iv);
+        var r = rollPool[idx];
+        setDieFace(die, tState.sides, r);
+        die.classList.remove('rolling');
+        tState.players[idx].roll = r;
+        tState.rolling = false;
+        vibrate([15, 30, 25]);
+
+        if (r === tState.sides) {
+          die.classList.remove('max-roll');
+          void die.offsetWidth;
+          die.classList.add('max-roll');
+          playJackpot();
+        }
+
+        var next = nextToRoll();
+        if (next < 0) {
+          setTimeout(showResults, 700);
+        } else {
+          renderTRolling();
+        }
+      }
+    }, 70);
+  }
+
+  function showResults() {
+    tState.phase = 'results';
+    tRolling.classList.add('hidden');
+    tResults.classList.remove('hidden');
+
+    var sorted = tState.players.slice().sort(function(a, b) { return b.roll - a.roll; });
+    var ordinals = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
+    resultsList.innerHTML = sorted.map(function(p, i) {
+      var cls = 'result-row' + (i === 0 ? ' winner' : '');
+      return '<div class="' + cls + '">' +
+        '<div class="result-rank">' + ordinals[i] + '</div>' +
+        '<div class="result-name">' + escapeHtml(p.name) + '</div>' +
+        '<div class="result-roll">rolled ' + p.roll + '</div>' +
+      '</div>';
+    }).join('');
+    vibrate([20, 40, 20, 40, 60]);
+  }
+
+  tDiceArea.addEventListener('click', rollTournament);
+
+  tResetBtn.addEventListener('click', function() {
+    tState = { sides: tState.sides, players: [], phase: 'setup', rolling: false };
+    tResults.classList.add('hidden');
+    tSetup.classList.remove('hidden');
+  });
+
+  tCancelBtn.addEventListener('click', function() {
+    tState.players = [];
+    tState.rolling = false;
+    tState.phase = 'setup';
+    tRolling.classList.add('hidden');
+    tSetup.classList.remove('hidden');
+  });
+
+  // ===================================================================
+  // GAMES
+  // ===================================================================
+
+  var gamesPicker = $('games-picker');
+  var gamePanels = {
+    yahtzee: $('game-yahtzee'),
+    farkle: $('game-farkle'),
+    statroll: $('game-statroll'),
+    liars: $('game-liars'),
+    craps: $('game-craps'),
+    monopoly: $('game-monopoly'),
+    catan: $('game-catan'),
+    backgammon: $('game-backgammon'),
+    risk: $('game-risk')
+  };
+
+  function showGame(name) {
+    gamesPicker.classList.add('hidden');
+    Object.keys(gamePanels).forEach(function(k) {
+      gamePanels[k].classList.toggle('hidden', k !== name);
+    });
+    // Reset that game's state on entry
+    if (name === 'yahtzee') yahtzeeInit();
+    else if (name === 'farkle') farkleInit();
+    else if (name === 'statroll') statrollInit();
+    else if (name === 'liars') liarsInit();
+    else if (name === 'craps') crapsInit();
+    else if (name === 'monopoly') monopolyInit();
+    else if (name === 'catan') catanInit();
+    else if (name === 'backgammon') backgammonInit();
+    else if (name === 'risk') riskInit();
+    playGameIntro(name);
+  }
+
+  function showPicker() {
+    gamesPicker.classList.remove('hidden');
+    Object.keys(gamePanels).forEach(function(k) {
+      gamePanels[k].classList.add('hidden');
+    });
+  }
+
+  // Wire up game picker cards
+  document.querySelectorAll('.game-card').forEach(function(card) {
+    card.addEventListener('click', function() { showGame(card.dataset.game); });
+  });
+  // Wire up all "Back" buttons
+  document.querySelectorAll('[data-back]').forEach(function(btn) {
+    btn.addEventListener('click', function() { showPicker(); playChChChCh(); });
+  });
+
+  // Shared helper: build a d6 die element with optional hold behavior.
+  function makeGameDie(value, opts) {
+    opts = opts || {};
+    var d = document.createElement('div');
+    d.className = 'die';
+    if (opts.selectable) d.classList.add('selectable');
+    if (opts.held) d.classList.add('held');
+    if (opts.dropped) d.classList.add('dropped');
+    if (opts.dimmed) d.classList.add('dimmed');
+    var face = '<div class="die-face">' + (value === null ? '—' : (opts.sides === 6 || !opts.sides ? pipSvg(value) : String(value))) + '</div>';
+    var label = '<div class="die-type">d' + (opts.sides || 6) + '</div>';
+    d.innerHTML = face + label;
+    return d;
+  }
+
+  // Animated spin helper for a set of die elements. Calls cb with final rolls after spin.
+  // Only unheld (non-frozen) dice spin; frozen dice keep their current value.
+  function spinDice(dieEls, sides, finalValues, cb) {
+    var frozen = dieEls.map(function(el, i) { return finalValues[i] === null; });
+    dieEls.forEach(function(el, i) {
+      if (!frozen[i]) el.classList.add('rolling');
+    });
+    playPreRollSwell();
+    vibrate(40);
+    var spinDuration = 600;
+    var start = Date.now();
+    var iv = setInterval(function() {
+      dieEls.forEach(function(el, i) {
+        if (frozen[i]) return;
+        setDieFace(el, sides, randInt(sides));
+      });
+      playClack();
+      if (Date.now() - start > spinDuration) {
+        clearInterval(iv);
+        dieEls.forEach(function(el, i) {
+          if (frozen[i]) return;
+          setDieFace(el, sides, finalValues[i]);
+          el.classList.remove('rolling');
+        });
+        vibrate([15, 30, 25]);
+        cb();
+      }
+    }, 70);
+  }
+
+  // ========================================================
+  // YAHTZEE — 5d6, up to 3 rolls per turn, tap to hold
+  // ========================================================
+  var yState = { dice: [null,null,null,null,null], held: [false,false,false,false,false], rollsUsed: 0, rolling: false };
+  var yDiceEl = $('y-dice'), yRollBtn = $('y-roll'), yEndBtn = $('y-end'), yHint = $('y-hint'), yPipsEl = $('y-pips');
+
+  function yahtzeeInit() {
+    yState = { dice: [null,null,null,null,null], held: [false,false,false,false,false], rollsUsed: 0, rolling: false };
+    yahtzeeRender();
+    yHint.textContent = 'Tap Roll to start';
+  }
+
+  function yahtzeeRender() {
+    yDiceEl.innerHTML = '';
+    yState.dice.forEach(function(v, i) {
+      var d = makeGameDie(v, { selectable: yState.rollsUsed > 0 && yState.rollsUsed < 3, held: yState.held[i] });
+      if (yState.rollsUsed > 0 && yState.rollsUsed < 3 && !yState.rolling) {
+        d.addEventListener('click', function() {
+          yState.held[i] = !yState.held[i];
+          yahtzeeRender();
+        });
+      }
+      yDiceEl.appendChild(d);
+    });
+    // Roll pips: filled pip for each used roll
+    var pipsHtml = '';
+    for (var i = 0; i < 3; i++) {
+      pipsHtml += '<span class="game-turn-pip' + (i < yState.rollsUsed ? ' used' : '') + '"></span>';
+    }
+    yPipsEl.innerHTML = pipsHtml;
+    yRollBtn.disabled = yState.rollsUsed >= 3 || yState.rolling;
+    yRollBtn.textContent = yState.rollsUsed === 0 ? 'Roll' : 'Re-roll';
+  }
+
+  yRollBtn.addEventListener('click', function() {
+    if (yState.rolling || yState.rollsUsed >= 3) return;
+    yState.rolling = true;
+    // On roll 1, no dice are held yet, so everything gets a new value.
+    // On rolls 2-3, held dice keep their value (null in finals means "don't respin").
+    var finals = yState.dice.map(function(v, i) {
+      return (yState.rollsUsed > 0 && yState.held[i]) ? null : randInt(6);
+    });
+    var dieEls = Array.prototype.slice.call(yDiceEl.children);
+    spinDice(dieEls, 6, finals, function() {
+      finals.forEach(function(v, i) {
+        if (v !== null) yState.dice[i] = v;
+      });
+      yState.rollsUsed++;
+      yState.rolling = false;
+      // Detect Yahtzee — all five identical
+      var allSame = yState.dice.every(function(x) { return x === yState.dice[0] && x !== null; });
+      if (allSame) {
+        playJackpot();
+        yHint.textContent = 'YAHTZEE · all five match';
+      } else if (yState.rollsUsed < 3) {
+        yHint.textContent = 'Tap dice to hold · ' + (3 - yState.rollsUsed) + ' re-roll' + (3 - yState.rollsUsed === 1 ? '' : 's') + ' left';
+      } else {
+        yHint.textContent = 'Turn complete · tap End Turn for next';
+      }
+      yahtzeeRender();
+    });
+  });
+
+  yEndBtn.addEventListener('click', yahtzeeInit);
+
+  // ========================================================
+  // FARKLE — 6d6, hold scoring dice, bank or push luck
+  // ========================================================
+  var fState = { dice: [null,null,null,null,null,null], held: [false,false,false,false,false,false], banked: 0, turnScore: 0, rolling: false, rolled: false };
+  var fDiceEl = $('f-dice'), fRollBtn = $('f-roll'), fBankBtn = $('f-bank'), fHint = $('f-hint'), fTurnScoreEl = $('f-turn-score'), fBankedEl = $('f-banked');
+
+  function farkleInit() {
+    fState = { dice: [null,null,null,null,null,null], held: [false,false,false,false,false,false], banked: 0, turnScore: 0, rolling: false, rolled: false };
+    farkleRender();
+    fHint.textContent = 'Tap Roll to start';
+  }
+
+  // Score a specific subset of held dice. Simplified Farkle scoring:
+  // - 1s = 100 each, 5s = 50 each
+  // - Three of a kind: 1s=1000, others = face*100 (e.g. 3x4 = 400)
+  // - Four of a kind: 2x three-of-a-kind value
+  // - Five of a kind: 3x three-of-a-kind value
+  // - Six of a kind: 4x three-of-a-kind value
+  // - Straight 1-6: 1500
+  // - Three pairs: 1500
+  function scoreHeld(dice) {
+    if (dice.length === 0) return 0;
+    var counts = [0,0,0,0,0,0,0]; // index 1..6
+    dice.forEach(function(v) { counts[v]++; });
+    // Straight 1-6
+    if (dice.length === 6 && counts.slice(1).every(function(c) { return c === 1; })) return 1500;
+    // Three pairs (only if 6 dice held)
+    if (dice.length === 6) {
+      var pairs = counts.slice(1).filter(function(c) { return c === 2; }).length;
+      if (pairs === 3) return 1500;
+    }
+    var score = 0;
+    for (var face = 1; face <= 6; face++) {
+      var c = counts[face];
+      if (c >= 3) {
+        var base = (face === 1) ? 1000 : face * 100;
+        score += base * (c - 2); // 3→1x, 4→2x, 5→3x, 6→4x
+      } else if (c > 0) {
+        if (face === 1) score += c * 100;
+        else if (face === 5) score += c * 50;
+        else return -1; // invalid: non-scorer included
+      }
+    }
+    return score;
+  }
+
+  // Is the current roll a Farkle? (no scoring combinations possible from un-held dice)
+  function isFarkle(dice) {
+    // Try every possible single-die selection to see if anything scores
+    for (var i = 0; i < dice.length; i++) {
+      if (scoreHeld([dice[i]]) > 0) return false;
+    }
+    // Check for three of a kind
+    var counts = [0,0,0,0,0,0,0];
+    dice.forEach(function(v) { counts[v]++; });
+    for (var f = 1; f <= 6; f++) if (counts[f] >= 3) return false;
+    // Check for straight/three-pairs across all 6
+    if (dice.length === 6) {
+      if (counts.slice(1).every(function(c) { return c === 1; })) return false;
+      var pairs = counts.slice(1).filter(function(c) { return c === 2; }).length;
+      if (pairs === 3) return false;
+    }
+    return true;
+  }
+
+  function farkleUpdateTurnScore() {
+    // Turn score = (score of currently held dice)
+    var heldDice = fState.dice.filter(function(v, i) { return fState.held[i] && v !== null; });
+    var s = scoreHeld(heldDice);
+    fTurnScoreEl.textContent = s >= 0 ? s : 0;
+    return s >= 0 ? s : 0;
+  }
+
+  function farkleRender() {
+    fDiceEl.innerHTML = '';
+    fState.dice.forEach(function(v, i) {
+      var opts = { selectable: fState.rolled && v !== null && !fState.rolling, held: fState.held[i], dimmed: v === null };
+      var d = makeGameDie(v, opts);
+      if (fState.rolled && v !== null && !fState.rolling) {
+        d.addEventListener('click', function() {
+          fState.held[i] = !fState.held[i];
+          farkleRender();
+        });
+      }
+      fDiceEl.appendChild(d);
+    });
+    var turnS = farkleUpdateTurnScore();
+    fBankedEl.textContent = fState.banked;
+    fRollBtn.disabled = fState.rolling;
+    fBankBtn.disabled = !fState.rolled || turnS === 0 || fState.rolling;
+  }
+
+  fRollBtn.addEventListener('click', function() {
+    if (fState.rolling) return;
+    fState.rolling = true;
+    // Commit held dice (remove them from the rollable pool)
+    var rollIndices = [];
+    for (var i = 0; i < 6; i++) {
+      if (fState.dice[i] !== null && fState.held[i]) continue; // held from previous
+      rollIndices.push(i);
+    }
+    // "Hot dice": if all 6 held and scoring, reset the dice for another roll
+    var allHeld = fState.held.every(function(h, i) { return h && fState.dice[i] !== null; });
+    if (allHeld) {
+      fState.dice = [null,null,null,null,null,null];
+      fState.held = [false,false,false,false,false,false];
+      rollIndices = [0,1,2,3,4,5];
+      fHint.textContent = 'HOT DICE · rolling all six';
+    }
+    var finals = [null,null,null,null,null,null];
+    rollIndices.forEach(function(i) { finals[i] = randInt(6); });
+    farkleRender();
+    var dieEls = Array.prototype.slice.call(fDiceEl.children);
+    spinDice(dieEls, 6, finals, function() {
+      finals.forEach(function(v, i) {
+        if (v !== null) fState.dice[i] = v;
+      });
+      fState.rolled = true;
+      fState.rolling = false;
+      // Check for Farkle on the newly rolled dice
+      var rolledDice = rollIndices.map(function(i) { return fState.dice[i]; });
+      if (isFarkle(rolledDice)) {
+        playBust();
+        vibrate([60, 40, 60, 40, 100]);
+        fHint.textContent = 'FARKLE · turn score lost';
+        // Reset turn; banked stays
+        setTimeout(function() {
+          fState.dice = [null,null,null,null,null,null];
+          fState.held = [false,false,false,false,false,false];
+          fState.rolled = false;
+          farkleRender();
+          fHint.textContent = 'Tap Roll for next turn';
+        }, 1400);
+      } else {
+        fHint.textContent = 'Tap scoring dice to hold · 1s=100 · 5s=50 · three-of-kind=face×100 (1s=1000)';
+      }
+      farkleRender();
+    });
+  });
+
+  fBankBtn.addEventListener('click', function() {
+    var s = farkleUpdateTurnScore();
+    if (s <= 0) return;
+    fState.banked += s;
+    playJackpot();
+    vibrate([30, 20, 30, 20, 60]);
+    fState.dice = [null,null,null,null,null,null];
+    fState.held = [false,false,false,false,false,false];
+    fState.rolled = false;
+    farkleRender();
+    fHint.textContent = 'Banked ' + s + ' · total ' + fState.banked + ' · tap Roll for next turn';
+  });
+
+  // ========================================================
+  // D&D STAT ROLL — 4d6 drop lowest, six stats
+  // ========================================================
+  var STAT_NAMES = ['STR','DEX','CON','INT','WIS','CHA'];
+  var sState = { stats: [], current: 0, rolling: false };
+  var sDiceEl = $('s-dice'), sRollBtn = $('s-roll'), sResetBtn = $('s-reset'), sResultsEl = $('s-results'), sCurrentStatEl = $('s-current-stat'), sCurrentSubEl = $('s-current-sub');
+
+  function statrollInit() {
+    sState = { stats: [], current: 0, rolling: false };
+    sDiceEl.innerHTML = '';
+    for (var i = 0; i < 4; i++) {
+      sDiceEl.appendChild(makeGameDie(null));
+    }
+    sResultsEl.innerHTML = '';
+    sCurrentStatEl.textContent = STAT_NAMES[0];
+    sCurrentSubEl.textContent = 'Next stat to roll';
+    sRollBtn.textContent = 'Roll ' + STAT_NAMES[0];
+    sRollBtn.disabled = false;
+    sRollBtn.classList.remove('hidden');
+    sResetBtn.classList.add('hidden');
+  }
+
+  sRollBtn.addEventListener('click', function() {
+    if (sState.rolling || sState.current >= 6) return;
+    sState.rolling = true;
+    var finals = [randInt(6), randInt(6), randInt(6), randInt(6)];
+    var dieEls = Array.prototype.slice.call(sDiceEl.children);
+    dieEls.forEach(function(el) { el.classList.remove('dropped'); });
+    spinDice(dieEls, 6, finals, function() {
+      // Identify the lowest index to drop
+      var minV = Math.min.apply(null, finals);
+      var dropIdx = finals.indexOf(minV);
+      dieEls[dropIdx].classList.add('dropped');
+      var sum = finals.reduce(function(a, b) { return a + b; }, 0) - minV;
+      sState.stats.push({ name: STAT_NAMES[sState.current], rolls: finals.slice(), dropped: dropIdx, sum: sum });
+      // Render stat tile
+      var tile = document.createElement('div');
+      tile.className = 'stat-tile';
+      tile.innerHTML = '<div class="stat-tile-label">' + STAT_NAMES[sState.current] + '</div>' +
+                       '<div class="stat-tile-value">' + sum + '</div>' +
+                       '<div class="stat-tile-breakdown">' + finals.map(function(v, i) { return i === dropIdx ? '<s>' + v + '</s>' : v; }).join(' · ') + '</div>';
+      sResultsEl.appendChild(tile);
+      if (sum === 18) playJackpot();
+      sState.current++;
+      sState.rolling = false;
+      if (sState.current >= 6) {
+        sRollBtn.classList.add('hidden');
+        sResetBtn.classList.remove('hidden');
+        var total = sState.stats.reduce(function(a, s) { return a + s.sum; }, 0);
+        sCurrentStatEl.textContent = 'Total ' + total;
+        sCurrentSubEl.textContent = sState.stats.length + ' stats · average ' + (total / 6).toFixed(1);
+      } else {
+        sRollBtn.textContent = 'Roll ' + STAT_NAMES[sState.current];
+        sCurrentStatEl.textContent = STAT_NAMES[sState.current];
+        sCurrentSubEl.textContent = 'Next stat to roll';
+      }
+    });
+  });
+
+  sResetBtn.addEventListener('click', statrollInit);
+
+  // ========================================================
+  // LIAR'S DICE — 5d6 per player, hidden reveals, pass-and-play
+  // ========================================================
+  var lState = { count: 3, playerRolls: [], current: 0 };
+  var lSetupEl = $('l-setup'), lHiddenEl = $('l-hidden'), lRevealedEl = $('l-revealed'), lDoneEl = $('l-done');
+  var lCountPills = document.querySelectorAll('#l-count-pills .pill');
+  var lStartBtn = $('l-start'), lShroudEl = $('l-shroud'), lWhoEl = $('l-who');
+  var lDiceEl = $('l-dice'), lRevealedWhoEl = $('l-revealed-who'), lHideBtn = $('l-hide'), lAgainBtn = $('l-again');
+
+  function liarsInit() {
+    lState = { count: 3, playerRolls: [], current: 0 };
+    lCountPills.forEach(function(p) { p.classList.toggle('active', parseInt(p.dataset.count, 10) === 3); });
+    lSetupEl.classList.remove('hidden');
+    lHiddenEl.classList.add('hidden');
+    lRevealedEl.classList.add('hidden');
+    lDoneEl.classList.add('hidden');
+  }
+
+  lCountPills.forEach(function(p) {
+    p.addEventListener('click', function() {
+      lCountPills.forEach(function(x) { x.classList.remove('active'); });
+      p.classList.add('active');
+      lState.count = parseInt(p.dataset.count, 10);
+    });
+  });
+
+  lStartBtn.addEventListener('click', function() {
+    // Pre-generate all rolls upfront so each player's reveal is instant
+    lState.playerRolls = [];
+    for (var i = 0; i < lState.count; i++) {
+      lState.playerRolls.push([randInt(6), randInt(6), randInt(6), randInt(6), randInt(6)]);
+    }
+    lState.current = 0;
+    lSetupEl.classList.add('hidden');
+    showShroudFor(0);
+  });
+
+  function showShroudFor(i) {
+    lHiddenEl.classList.remove('hidden');
+    lRevealedEl.classList.add('hidden');
+    lDoneEl.classList.add('hidden');
+    lWhoEl.textContent = 'Player ' + (i + 1);
+  }
+
+  lShroudEl.addEventListener('click', function() {
+    // Reveal this player's roll
+    lHiddenEl.classList.add('hidden');
+    lRevealedEl.classList.remove('hidden');
+    var rolls = lState.playerRolls[lState.current];
+    lDiceEl.innerHTML = '';
+    rolls.forEach(function(v) { lDiceEl.appendChild(makeGameDie(v)); });
+    lRevealedWhoEl.textContent = 'Player ' + (lState.current + 1) + ' · remember your roll';
+    vibrate(30);
+  });
+
+  lHideBtn.addEventListener('click', function() {
+    lState.current++;
+    if (lState.current >= lState.count) {
+      // All revealed
+      lHiddenEl.classList.add('hidden');
+      lRevealedEl.classList.add('hidden');
+      lDoneEl.classList.remove('hidden');
+    } else {
+      showShroudFor(lState.current);
+    }
+  });
+
+  lAgainBtn.addEventListener('click', liarsInit);
+
+  // ========================================================
+  // CRAPS — 2d6 with named outcomes
+  // ========================================================
+  var cState = { rolling: false };
+  var cDiceEl = $('c-dice'), cRollBtn = $('c-roll'), cOutcomeEl = $('c-outcome'), cSubEl = $('c-sub');
+
+  function crapsInit() {
+    cState = { rolling: false };
+    cDiceEl.innerHTML = '';
+    for (var i = 0; i < 2; i++) cDiceEl.appendChild(makeGameDie(null));
+    cOutcomeEl.innerHTML = '&nbsp;';
+    cSubEl.innerHTML = '&nbsp;';
+  }
+
+  function crapsOutcome(a, b) {
+    var sum = a + b;
+    // Named specials first
+    if (a === 1 && b === 1) return { name: 'Snake Eyes', sub: 'Double ones · total 2' };
+    if (a === 6 && b === 6) return { name: 'Boxcars', sub: 'Double sixes · total 12' };
+    if ((a === 1 && b === 2) || (a === 2 && b === 1)) return { name: 'Ace Deuce', sub: '1 and 2 · total 3' };
+    if (sum === 7) return { name: 'Natural Seven', sub: 'Lucky · ' + a + ' + ' + b };
+    if (sum === 11) return { name: 'Yo Eleven', sub: 'Natural win · ' + a + ' + ' + b };
+    // Hardways (matching pairs that aren't snake eyes or boxcars)
+    if (a === b) return { name: 'Hard ' + sum, sub: 'Both ' + a + 's · total ' + sum };
+    // Generic
+    return { name: 'Easy ' + sum, sub: a + ' + ' + b + ' · total ' + sum };
+  }
+
+  cRollBtn.addEventListener('click', function() {
+    if (cState.rolling) return;
+    cState.rolling = true;
+    var finals = [randInt(6), randInt(6)];
+    var dieEls = Array.prototype.slice.call(cDiceEl.children);
+    cOutcomeEl.innerHTML = '&nbsp;';
+    cSubEl.innerHTML = '&nbsp;';
+    spinDice(dieEls, 6, finals, function() {
+      cState.rolling = false;
+      var out = crapsOutcome(finals[0], finals[1]);
+      cOutcomeEl.textContent = out.name.toUpperCase();
+      cSubEl.textContent = out.sub;
+      // Delight: jackpot for Yo, Seven Out, Boxcars, Snake Eyes
+      if (finals[0] === finals[1] && finals[0] === 6) playJackpot();
+      else if (finals[0] + finals[1] === 7) playJackpot();
+      else if (finals[0] + finals[1] === 11) playJackpot();
+      else if (finals[0] === 1 && finals[1] === 1) { playBust(); vibrate([60, 40, 60]); }
+    });
+  });
+
+  // ========================================================
+  // MONOPOLY — 2d6 with doubles tracking, jail on 3 in a row
+  // ========================================================
+  var mState = { rolling: false, doublesCount: 0, inJail: false };
+  var mDiceEl = $('m-dice'), mRollBtn = $('m-roll'), mEndBtn = $('m-end'), mOutcomeEl = $('m-outcome'), mSubEl = $('m-sub'), mPipsEl = $('m-pips');
+
+  function monopolyInit() {
+    mState = { rolling: false, doublesCount: 0, inJail: false };
+    mDiceEl.innerHTML = '';
+    for (var i = 0; i < 2; i++) mDiceEl.appendChild(makeGameDie(null));
+    mOutcomeEl.innerHTML = '&nbsp;';
+    mSubEl.innerHTML = '&nbsp;';
+    monopolyRenderPips();
+    mRollBtn.disabled = false;
+    mRollBtn.textContent = 'Roll';
+  }
+
+  function monopolyRenderPips() {
+    var html = '';
+    for (var i = 0; i < 3; i++) {
+      html += '<span class="game-turn-pip' + (i < mState.doublesCount ? ' used' : '') + '"></span>';
+    }
+    mPipsEl.innerHTML = html;
+  }
+
+  mRollBtn.addEventListener('click', function() {
+    if (mState.rolling || mState.inJail) return;
+    mState.rolling = true;
+    var finals = [randInt(6), randInt(6)];
+    var dieEls = Array.prototype.slice.call(mDiceEl.children);
+    mOutcomeEl.innerHTML = '&nbsp;';
+    mSubEl.innerHTML = '&nbsp;';
+    spinDice(dieEls, 6, finals, function() {
+      mState.rolling = false;
+      var sum = finals[0] + finals[1];
+      var isDoubles = finals[0] === finals[1];
+      if (isDoubles) {
+        mState.doublesCount++;
+        if (mState.doublesCount >= 3) {
+          mState.inJail = true;
+          mOutcomeEl.textContent = 'GO TO JAIL';
+          mSubEl.textContent = 'Third doubles in a row · move directly to jail';
+          playBust();
+          vibrate([60, 40, 60, 40, 100]);
+          mRollBtn.disabled = true;
+        } else {
+          mOutcomeEl.textContent = 'DOUBLES · ' + sum;
+          mSubEl.textContent = finals[0] + ' + ' + finals[1] + ' · roll again · ' + mState.doublesCount + (mState.doublesCount === 1 ? 'st' : 'nd') + ' doubles';
+          playJackpot();
+        }
+      } else {
+        mOutcomeEl.textContent = 'MOVE ' + sum;
+        mSubEl.textContent = finals[0] + ' + ' + finals[1];
+        // Reset doubles counter on a non-doubles roll
+        mState.doublesCount = 0;
+      }
+      monopolyRenderPips();
+    });
+  });
+
+  mEndBtn.addEventListener('click', monopolyInit);
+
+  // ========================================================
+  // CATAN — 2d6 with 7-triggers-robber callout + roll history
+  // ========================================================
+  var kState = { rolling: false, history: [] };
+  var kDiceEl = $('k-dice'), kRollBtn = $('k-roll'), kOutcomeEl = $('k-outcome'), kSubEl = $('k-sub'), kHistoryEl = $('k-history');
+
+  function catanInit() {
+    kState = { rolling: false, history: [] };
+    kDiceEl.innerHTML = '';
+    for (var i = 0; i < 2; i++) kDiceEl.appendChild(makeGameDie(null));
+    kOutcomeEl.innerHTML = '&nbsp;';
+    kSubEl.innerHTML = '&nbsp;';
+    kHistoryEl.textContent = 'No rolls yet';
+  }
+
+  // Number probabilities from 2d6 — show dots for rarity
+  function catanRarity(n) {
+    var ways = { 2:1, 3:2, 4:3, 5:4, 6:5, 7:6, 8:5, 9:4, 10:3, 11:2, 12:1 };
+    return ways[n] || 0;
+  }
+
+  kRollBtn.addEventListener('click', function() {
+    if (kState.rolling) return;
+    kState.rolling = true;
+    var finals = [randInt(6), randInt(6)];
+    var dieEls = Array.prototype.slice.call(kDiceEl.children);
+    kOutcomeEl.innerHTML = '&nbsp;';
+    kSubEl.innerHTML = '&nbsp;';
+    spinDice(dieEls, 6, finals, function() {
+      kState.rolling = false;
+      var sum = finals[0] + finals[1];
+      kState.history.unshift(sum);
+      if (kState.history.length > 12) kState.history.pop();
+
+      if (sum === 7) {
+        kOutcomeEl.textContent = 'SEVEN · ROBBER';
+        kSubEl.textContent = 'Discard half if 8+ cards · move the robber';
+        playBust();
+        vibrate([40, 30, 40, 30, 80]);
+        // Make dice visually "danger" (use accent red-ish — we'll use the mint but with class)
+        dieEls.forEach(function(el) {
+          el.classList.remove('max-roll');
+          void el.offsetWidth;
+          el.classList.add('max-roll');
+          setTimeout(function() { el.classList.remove('max-roll'); }, 650);
+        });
+      } else {
+        kOutcomeEl.textContent = String(sum);
+        var rarity = catanRarity(sum);
+        var dots = '';
+        for (var i = 0; i < rarity; i++) dots += '•';
+        kSubEl.textContent = finals[0] + ' + ' + finals[1] + ' · ' + dots + ' (' + rarity + '/36 chance)';
+      }
+      // Render history
+      kHistoryEl.textContent = 'Recent: ' + kState.history.slice(0, 12).join(' · ');
+    });
+  });
+
+  // ========================================================
+  // BACKGAMMON — 2d6 where doubles = 4 moves of that value
+  // ========================================================
+  var bState = { rolling: false };
+  var bDiceEl = $('b-dice'), bRollBtn = $('b-roll'), bOutcomeEl = $('b-outcome'), bSubEl = $('b-sub');
+
+  function backgammonInit() {
+    bState = { rolling: false };
+    bDiceEl.innerHTML = '';
+    bDiceEl.classList.remove('bg-quadruple');
+    for (var i = 0; i < 2; i++) bDiceEl.appendChild(makeGameDie(null));
+    bOutcomeEl.innerHTML = '&nbsp;';
+    bSubEl.innerHTML = '&nbsp;';
+  }
+
+  bRollBtn.addEventListener('click', function() {
+    if (bState.rolling) return;
+    bState.rolling = true;
+    // Always spin 2 dice first — if doubles, we'll add 2 more after settle
+    bDiceEl.classList.remove('bg-quadruple');
+    bDiceEl.innerHTML = '';
+    for (var i = 0; i < 2; i++) bDiceEl.appendChild(makeGameDie(null));
+    var finals = [randInt(6), randInt(6)];
+    var dieEls = Array.prototype.slice.call(bDiceEl.children);
+    bOutcomeEl.innerHTML = '&nbsp;';
+    bSubEl.innerHTML = '&nbsp;';
+    spinDice(dieEls, 6, finals, function() {
+      bState.rolling = false;
+      var isDoubles = finals[0] === finals[1];
+      if (isDoubles) {
+        // Add 2 more dice to show the 4-move effect
+        bDiceEl.classList.add('bg-quadruple');
+        for (var i = 0; i < 2; i++) {
+          var extra = makeGameDie(finals[0]);
+          bDiceEl.appendChild(extra);
+          // Trigger a small entrance animation
+          extra.classList.remove('max-roll');
+          void extra.offsetWidth;
+          extra.classList.add('max-roll');
+          setTimeout((function(el) { return function() { el.classList.remove('max-roll'); }; })(extra), 650);
+        }
+        bOutcomeEl.textContent = 'DOUBLES · 4 × ' + finals[0];
+        bSubEl.textContent = 'Move ' + finals[0] + ' four times · total pips ' + (finals[0] * 4);
+        playJackpot();
+        vibrate([20, 30, 20, 30, 60]);
+      } else {
+        bOutcomeEl.textContent = finals[0] + ' + ' + finals[1];
+        bSubEl.textContent = 'Move ' + finals[0] + ' and move ' + finals[1];
+      }
+    });
+  });
+
+  // ========================================================
+  // RISK — attacker vs defender, sorted pair compare
+  // ========================================================
+  var rState = { rolling: false, attCount: 3, defCount: 2 };
+  var rAttDiceEl = $('r-att-dice'), rDefDiceEl = $('r-def-dice');
+  var rRollBtn = $('r-roll'), rOutcomeEl = $('r-outcome'), rSubEl = $('r-sub');
+  var rAttPills = document.querySelectorAll('#r-att-pills .pill');
+  var rDefPills = document.querySelectorAll('#r-def-pills .pill');
+
+  function riskInit() {
+    rState = { rolling: false, attCount: 3, defCount: 2 };
+    rAttPills.forEach(function(p) { p.classList.toggle('active', parseInt(p.dataset.count, 10) === 3); });
+    rDefPills.forEach(function(p) { p.classList.toggle('active', parseInt(p.dataset.count, 10) === 2); });
+    riskRenderPlaceholders();
+    rOutcomeEl.innerHTML = '&nbsp;';
+    rSubEl.innerHTML = '&nbsp;';
+  }
+
+  function riskRenderPlaceholders() {
+    rAttDiceEl.innerHTML = '';
+    rDefDiceEl.innerHTML = '';
+    for (var i = 0; i < rState.attCount; i++) rAttDiceEl.appendChild(makeGameDie(null));
+    for (var j = 0; j < rState.defCount; j++) rDefDiceEl.appendChild(makeGameDie(null));
+  }
+
+  rAttPills.forEach(function(p) {
+    p.addEventListener('click', function() {
+      if (rState.rolling) return;
+      rAttPills.forEach(function(x) { x.classList.remove('active'); });
+      p.classList.add('active');
+      rState.attCount = parseInt(p.dataset.count, 10);
+      riskRenderPlaceholders();
+      rOutcomeEl.innerHTML = '&nbsp;';
+      rSubEl.innerHTML = '&nbsp;';
+    });
+  });
+  rDefPills.forEach(function(p) {
+    p.addEventListener('click', function() {
+      if (rState.rolling) return;
+      rDefPills.forEach(function(x) { x.classList.remove('active'); });
+      p.classList.add('active');
+      rState.defCount = parseInt(p.dataset.count, 10);
+      riskRenderPlaceholders();
+      rOutcomeEl.innerHTML = '&nbsp;';
+      rSubEl.innerHTML = '&nbsp;';
+    });
+  });
+
+  rRollBtn.addEventListener('click', function() {
+    if (rState.rolling) return;
+    rState.rolling = true;
+    // Fresh placeholder dice (clears previous win/loss classes)
+    riskRenderPlaceholders();
+    var attFinals = [];
+    var defFinals = [];
+    for (var i = 0; i < rState.attCount; i++) attFinals.push(randInt(6));
+    for (var j = 0; j < rState.defCount; j++) defFinals.push(randInt(6));
+    var attDice = Array.prototype.slice.call(rAttDiceEl.children);
+    var defDice = Array.prototype.slice.call(rDefDiceEl.children);
+    rOutcomeEl.innerHTML = '&nbsp;';
+    rSubEl.innerHTML = '&nbsp;';
+    // Spin both sides concurrently — we'll use a wrapper since spinDice takes one set
+    var settled = 0;
+    function onSettle() {
+      settled++;
+      if (settled < 2) return;
+      rState.rolling = false;
+      // Sort both sides descending
+      var attSorted = attFinals.slice().sort(function(a, b) { return b - a; });
+      var defSorted = defFinals.slice().sort(function(a, b) { return b - a; });
+      // Compare pairs: highest vs highest, then second vs second
+      var pairs = Math.min(attSorted.length, defSorted.length);
+      var attLosses = 0, defLosses = 0;
+      var pairResults = [];
+      for (var i = 0; i < pairs; i++) {
+        if (attSorted[i] > defSorted[i]) {
+          defLosses++;
+          pairResults.push({ att: attSorted[i], def: defSorted[i], attWin: true });
+        } else {
+          // Tie goes to defender
+          attLosses++;
+          pairResults.push({ att: attSorted[i], def: defSorted[i], attWin: false });
+        }
+      }
+      // Highlight winners/losers on the actual displayed dice.
+      // We need to find the first die on each side with the matching value from the sorted list.
+      // Use a used-flag to avoid double-marking when multiple dice share a value.
+      function markHighest(dice, rolls, matchValues, klass) {
+        var used = rolls.map(function() { return false; });
+        matchValues.forEach(function(v) {
+          for (var k = 0; k < rolls.length; k++) {
+            if (!used[k] && rolls[k] === v) {
+              used[k] = true;
+              dice[k].classList.add(klass);
+              return;
+            }
+          }
+        });
+      }
+      // Determine which of attSorted values won vs lost
+      var attWinValues = [], attLossValues = [], defWinValues = [], defLossValues = [];
+      pairResults.forEach(function(r) {
+        if (r.attWin) { attWinValues.push(r.att); defLossValues.push(r.def); }
+        else { attLossValues.push(r.att); defWinValues.push(r.def); }
+      });
+      markHighest(attDice, attFinals, attWinValues, 'battle-win');
+      markHighest(attDice, attFinals, attLossValues, 'battle-loss');
+      markHighest(defDice, defFinals, defWinValues, 'battle-win');
+      markHighest(defDice, defFinals, defLossValues, 'battle-loss');
+
+      // Outcome text
+      if (attLosses > 0 && defLosses > 0) {
+        rOutcomeEl.textContent = 'Both lose ' + attLosses;
+        rSubEl.textContent = pairResults.map(function(r) { return r.att + (r.attWin ? '>' : '≤') + r.def; }).join(' · ');
+      } else if (attLosses > 0) {
+        rOutcomeEl.textContent = 'Attacker loses ' + attLosses;
+        rSubEl.textContent = pairResults.map(function(r) { return r.att + (r.attWin ? '>' : '≤') + r.def; }).join(' · ') + ' · defender holds';
+        playBust();
+      } else {
+        rOutcomeEl.textContent = 'Defender loses ' + defLosses;
+        rSubEl.textContent = pairResults.map(function(r) { return r.att + (r.attWin ? '>' : '≤') + r.def; }).join(' · ') + ' · attacker advances';
+        playJackpot();
+      }
+    }
+    spinDice(attDice, 6, attFinals, onSettle);
+    spinDice(defDice, 6, defFinals, onSettle);
+  });
+
+})();
+</script>
+</body>
+</html>
