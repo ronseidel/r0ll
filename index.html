@@ -36,7 +36,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23034D32'/%3E%3Ccircle cx='90' cy='90' r='50' fill='none' stroke='%23F9F9F9' stroke-width='14'/%3E%3Ccircle cx='90' cy='90' r='9' fill='%23F9F9F9'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script>
 // Pre-paint theme resolver — reads system preference and sets inline colors before body renders.
 // No persistence: every load starts from the current system preference.
@@ -70,6 +70,7 @@
   --mint: #00BD78;
   --muted: rgba(3, 77, 50, 0.55);
   --die-bg: #FFFFFF;
+  --poly-dark: #7FA99B;
 }
 
 /* Theme — both themes applied via explicit html class set pre-paint.
@@ -83,6 +84,7 @@ html.theme-dark {
   --mint: #00BD78;
   --muted: rgba(228, 243, 238, 0.55);
   --die-bg: #0f2e20;
+  --poly-dark: #05281b;
 }
 html.theme-dark, html.theme-dark body {
   background: #0a1f16;
@@ -353,6 +355,50 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
 
 .die.rolling {
   animation: diceShake 0.12s ease-in-out infinite;
+}
+
+/* Polyhedron die — no square container, SVG is the die */
+.die.poly {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.die.poly .die-face svg.die-poly {
+  width: 100%;
+  height: 100%;
+}
+
+/* Face fills — three-tone shading to give fake-3D dimensionality */
+.die-poly .face-light { fill: var(--accent-bg); stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
+.die-poly .face-mid   { fill: var(--border);    stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
+.die-poly .face-dark  { fill: var(--poly-dark); stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
+
+/* Halo + fill text pair. The halo is drawn first (stroked, no fill) underneath the solid-fill number. */
+.die-poly .poly-num {
+  font-family: 'Big Shoulders Display', 'Inter', sans-serif;
+  font-weight: 800;
+  dominant-baseline: middle;
+}
+.die-poly .poly-halo { fill: none; stroke: var(--accent-bg); stroke-width: 4; stroke-linejoin: round; }
+.die-poly .poly-fill { fill: var(--ink); stroke: none; }
+
+.die.poly .die-type {
+  bottom: -4px;
+  right: -2px;
+}
+
+.die.poly.rolling {
+  animation: polyTumble 0.9s linear infinite;
+}
+
+@keyframes polyTumble {
+  0%   { transform: rotate(0deg) rotateX(0deg); }
+  25%  { transform: rotate(90deg) rotateX(15deg); }
+  50%  { transform: rotate(180deg) rotateX(-10deg); }
+  75%  { transform: rotate(270deg) rotateX(12deg); }
+  100% { transform: rotate(360deg) rotateX(0deg); }
 }
 
 .die.max-roll {
@@ -1625,7 +1671,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
 </div>
 
 <footer class="footer">
-  <a href="https://0utput.co" target="_blank" rel="noopener">0utput.co</a> · r0ll v16
+  <a href="https://0utput.co" target="_blank" rel="noopener">0utput.co</a> · r0ll v18
 </footer>
 
 <script>
@@ -1646,6 +1692,8 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
  * v14 · 2026-04-22 · Audio production pass. (1) Built a shared effects bus with convolution reverb (1.4s decay, synthesized impulse) and feedback delay (180ms / 25% feedback) that all arena/back sounds now route through — fixes the dry, harsh quality of v13. (2) Replaced the single generic arena intro with 9 per-game intros matching each game's vibe: Yahtzee (bright dice-shake fanfare), Farkle (minor-to-major risk/reward resolution), D&D Stat Roll (medieval horn call), Liar's Dice (mysterious tritone drone), Craps (Vegas brass stab), Monopoly (bouncy classic jingle), Catan (pastoral open fifth), Backgammon (wooden diatonic walk), Risk (war drum + rising horn). The ch-ch-ch-ch back sound also routes through the bus now for consistency.
  * v15 · 2026-04-22 · Sound toggle now cycles three states: off → sounds → spa → off. (1) "Spa mode" layers a generative ambient pad on top of app sounds — 4 sustained oscillators that slowly drift through a 4-chord progression (Am7 → Fmaj7 → Cmaj7 → Gsus2) every ~24s, each voice has slow LFO on pitch and amplitude so it never sounds static or loops. Routed through the existing reverb bus. Fades in over 2.5s when enabled, out over 1.5s when disabled. (2) Every roll across the app now gets a subtle pre-roll swell — 280ms rising triangle-wave tone that crescendos into the existing clack. Works in both sounds and spa modes. (3) Sound toggle icon now has three variants: speaker-x (off), speaker-waves (sounds), speaker-music (spa).
  * v16 · 2026-04-22 · Removed spa/ambient pad (not quite right yet). Sound toggle is back to two states: off → on → off. Pre-roll swell kept — it's a nice touch even without the ambient bed. Bundled as index.html for GitHub deploy alongside the versioned file and OG image.
+ * v17 · 2026-04-23 · Polyhedron dice. Non-d6 dice (d4, d8, d10, d12, d20) now render as proper polyhedron silhouettes with visible geometry instead of rounded squares. d4/d8/d10 show multiple faces with numbers on each, tumbling via 3D CSS transforms. d12/d20 show silhouette with internal edge lines and a cycling center number during spin. d6 pips unchanged. Square container removed for non-d6 dice so the shape itself is the die.
+ * v18 · 2026-04-23 · Polyhedron dice v2 — now with proper fake-3D three-tone filled shading (lightest on front face, medium on sides, dark on receding faces) so they read as solid objects, not flat outlines. Numbers now use Big Shoulders Display 800 (tall, condensed, display face) at a much larger size with a light-halo stroke behind the ink-fill to knock out crossings with face edges. All 5 polyhedra redesigned. Number is hidden during spin (em-dash shown) and appears only on settle — matches how physical dice work. Google Fonts import expanded to include Big Shoulders.
  */
 (function() {
   'use strict';
@@ -2327,6 +2375,178 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
     return String(value);
   }
 
+  // ---------- Polyhedron SVG rendering (d4, d8, d10, d12, d20) ----------
+  // Each shape is drawn in viewBox 0 0 100 100 with three-tone filled faces:
+  //   LIGHT (#E4F3EE) — front-facing face (where the number sits)
+  //   MID   (#B3D4C6) — side faces (partly visible)
+  //   DARK  (#7FA99B) — receding faces (away from viewer)
+  // Dark mode maps: LIGHT→accent-bg, MID→border, DARK→a dimmer accent.
+  // `displayValue` is the settled number (empty during spin).
+  // Numbers render in Big Shoulders Display 800 with a light-green halo stroke
+  // (drawn via two stacked text elements — stroke-only underneath, fill-only on top —
+  // for broad browser compatibility, since paint-order has uneven support).
+
+  // Helper: produce the halo-text pair centered at (x, y) with given size.
+  function haloText(x, y, size, value) {
+    if (!value && value !== 0) return '';
+    return [
+      '<text class="poly-num poly-halo" x="', x, '" y="', y, '" text-anchor="middle" font-size="', size, '">', value, '</text>',
+      '<text class="poly-num poly-fill" x="', x, '" y="', y, '" text-anchor="middle" font-size="', size, '">', value, '</text>'
+    ].join('');
+  }
+
+  // d4 — tetrahedron viewed from slightly above. 3 visible faces. Number in front triangle.
+  function polyhedronD4(displayValue) {
+    return [
+      '<svg class="die-poly" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">',
+      // Three visible faces. Front (light), left back (mid), right back (dark).
+      '<polygon points="50,12 12,84 88,84" class="face-light"/>',  // big front triangle
+      '<polygon points="50,12 12,84 30,48" class="face-mid"/>',    // visible left side ridge
+      '<polygon points="50,12 88,84 70,48" class="face-dark"/>',   // visible right side ridge
+      haloText(50, 68, 40, displayValue),
+      '</svg>'
+    ].join('');
+  }
+
+  // d8 — octahedron. Diamond silhouette, equator divides upper/lower pyramids.
+  // 4 visible triangular faces. Front-top (light) holds the number.
+  function polyhedronD8(displayValue) {
+    return [
+      '<svg class="die-poly" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">',
+      // Upper-left face (mid)
+      '<polygon points="50,8 8,50 50,50" class="face-mid"/>',
+      // Upper-right face (light — front-facing, number lives here)
+      '<polygon points="50,8 92,50 50,50" class="face-light"/>',
+      // Lower-left face (dark)
+      '<polygon points="8,50 50,50 50,92" class="face-dark"/>',
+      // Lower-right face (mid)
+      '<polygon points="92,50 50,50 50,92" class="face-mid"/>',
+      haloText(50, 42, 30, displayValue),
+      '</svg>'
+    ].join('');
+  }
+
+  // d10 — pentagonal trapezohedron. 10 kite faces. From angle, 3 visible on top half.
+  function polyhedronD10(displayValue) {
+    return [
+      '<svg class="die-poly" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">',
+      // Top half: 3 kite faces
+      // Central front kite (light — number here)
+      '<polygon points="50,12 20,40 50,56 80,40" class="face-light"/>',
+      // Left kite (mid)
+      '<polygon points="50,12 8,48 20,40" class="face-mid"/>',
+      // Right kite (mid)
+      '<polygon points="50,12 92,48 80,40" class="face-mid"/>',
+      // Equator line + lower half
+      // Left receding kite
+      '<polygon points="8,48 20,40 50,56 50,92" class="face-dark"/>',
+      // Right receding kite
+      '<polygon points="92,48 80,40 50,56 50,92" class="face-dark"/>',
+      haloText(50, 44, 30, displayValue),
+      '</svg>'
+    ].join('');
+  }
+
+  // d12 — dodecahedron. Pentagonal silhouette with inner pentagon forming a star facet pattern.
+  function polyhedronD12(displayValue) {
+    var outer = pentagonPoints(50, 50, 42, -90); // top point up
+    var inner = pentagonPoints(50, 50, 22, 90);  // rotated — inner star
+    // Parse back to coordinate arrays for face construction
+    var o = outer.split(' ').map(function(s) { var p = s.split(','); return [+p[0], +p[1]]; });
+    var ip = inner.split(' ').map(function(s) { var p = s.split(','); return [+p[0], +p[1]]; });
+    // We want faces: 1 central pentagon (front, light) + 5 surrounding quads (alternating mid/dark)
+    // For each outer vertex, connect to two adjacent inner vertices to form a quad with the outer edge.
+    // Ordering: outer[0] is topmost (angle -90 + 0*72 = -90 → 50,8). Inner pentagon is rotated (angle 90 + 0*72 = 90 → 50,72).
+    // Inner vertex closest to outer[0] is... inner vertices are at angles 90, 162, 234, 306, 18.
+    // outer[0] at -90 deg. Closest inner: angles 90 (south) is farthest. Let me just pair each outer to its two closest inner.
+    var quads = [];
+    for (var i = 0; i < 5; i++) {
+      var op1 = o[i];
+      var op2 = o[(i + 1) % 5]; // next outer vertex
+      // Find the inner vertex between them (the one that's "inside" this edge)
+      // The inner vertex closest to the midpoint of op1-op2
+      var mx = (op1[0] + op2[0]) / 2, my = (op1[1] + op2[1]) / 2;
+      var best = 0, bestDist = Infinity;
+      for (var j = 0; j < 5; j++) {
+        var d = (ip[j][0] - mx) * (ip[j][0] - mx) + (ip[j][1] - my) * (ip[j][1] - my);
+        if (d < bestDist) { bestDist = d; best = j; }
+      }
+      quads.push([op1, op2, ip[best]]);
+    }
+    // Alternate fill shading for the 5 outer faces — helps dimensional feel
+    var outerFills = ['face-mid', 'face-dark', 'face-mid', 'face-dark', 'face-mid'];
+    var svg = ['<svg class="die-poly" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'];
+    // Draw outer facets
+    for (var k = 0; k < quads.length; k++) {
+      svg.push('<polygon points="' + quads[k].map(function(p) { return p[0] + ',' + p[1]; }).join(' ') + '" class="' + outerFills[k] + '"/>');
+    }
+    // Inner central pentagon (light — holds the number)
+    svg.push('<polygon points="' + inner + '" class="face-light"/>');
+    svg.push(haloText(50, 60, 32, displayValue));
+    svg.push('</svg>');
+    return svg.join('');
+  }
+
+  // d20 — icosahedron. Hexagonal silhouette with triangular mesh. 10 visible faces.
+  // Central face is light (number sits here); alternating surround in mid/dark tones.
+  function polyhedronD20(displayValue) {
+    // Vertex coords
+    var TOP = '50,8';
+    var UL = '12,30', UR = '88,30';
+    var LL = '12,70', LR = '88,70';
+    var BOT = '50,92';
+    var CA = '50,28';   // central triangle apex
+    var CL = '28,65';   // central triangle bottom-left
+    var CR = '72,65';   // central triangle bottom-right
+    return [
+      '<svg class="die-poly" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">',
+      // Central front face — lightest, holds the number
+      '<polygon points="' + CA + ' ' + CL + ' ' + CR + '" class="face-light"/>',
+      // Upper flanking
+      '<polygon points="' + CA + ' ' + TOP + ' ' + UL + '" class="face-mid"/>',
+      '<polygon points="' + CA + ' ' + TOP + ' ' + UR + '" class="face-mid"/>',
+      // Side upper
+      '<polygon points="' + UL + ' ' + CA + ' ' + CL + '" class="face-light"/>',
+      '<polygon points="' + UR + ' ' + CA + ' ' + CR + '" class="face-light"/>',
+      // Side lower
+      '<polygon points="' + UL + ' ' + CL + ' ' + LL + '" class="face-mid"/>',
+      '<polygon points="' + UR + ' ' + CR + ' ' + LR + '" class="face-mid"/>',
+      // Bottom band
+      '<polygon points="' + CL + ' ' + CR + ' ' + BOT + '" class="face-mid"/>',
+      '<polygon points="' + CL + ' ' + LL + ' ' + BOT + '" class="face-dark"/>',
+      '<polygon points="' + CR + ' ' + LR + ' ' + BOT + '" class="face-dark"/>',
+      haloText(50, 62, 28, displayValue),
+      '</svg>'
+    ].join('');
+  }
+
+  // Helper: generate pentagon vertices. angleDegStart = angle of first vertex (degrees from positive x-axis).
+  function pentagonPoints(cx, cy, r, angleDegStart) {
+    var pts = [];
+    for (var i = 0; i < 5; i++) {
+      var ang = (angleDegStart + i * 72) * Math.PI / 180;
+      var x = cx + r * Math.cos(ang);
+      var y = cy + r * Math.sin(ang);
+      pts.push(x.toFixed(2) + ',' + y.toFixed(2));
+    }
+    return pts.join(' ');
+  }
+
+  // Main dispatcher: returns the SVG string for a polyhedron die face content.
+  function polyhedronSvg(sides, displayValue) {
+    if (sides === 4) return polyhedronD4(displayValue);
+    if (sides === 8) return polyhedronD8(displayValue);
+    if (sides === 10) return polyhedronD10(displayValue);
+    if (sides === 12) return polyhedronD12(displayValue);
+    if (sides === 20) return polyhedronD20(displayValue);
+    return String(displayValue);
+  }
+
+  // Is this die type a polyhedron style (vs the classic square with pips/number)?
+  function isPolyhedron(sides) {
+    return sides === 4 || sides === 8 || sides === 10 || sides === 12 || sides === 20;
+  }
+
   // ---------- Mode toggle ----------
   var modeBtns = document.querySelectorAll('.mode-btn');
   var singleSection = $('single-mode');
@@ -2425,10 +2645,14 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
 
   function renderDiceInitial() {
     diceGrid.innerHTML = '';
+    var poly = isPolyhedron(singleState.sides);
     for (var i = 0; i < singleState.count; i++) {
       var die = document.createElement('div');
-      die.className = 'die';
-      die.innerHTML = '<div class="die-face">—</div><div class="die-type">d' + singleState.sides + '</div>';
+      die.className = 'die' + (poly ? ' poly' : '');
+      var inner = poly
+        ? polyhedronSvg(singleState.sides, '')
+        : '—';
+      die.innerHTML = '<div class="die-face">' + inner + '</div><div class="die-type">d' + singleState.sides + '</div>';
       diceGrid.appendChild(die);
     }
     sumDisplay.classList.add('hidden');
@@ -2437,9 +2661,17 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
 
   function setDieFace(dieEl, sides, value) {
     var face = dieEl.querySelector('.die-face');
-    if (sides === 6 && value >= 1 && value <= 6) {
+    if (isPolyhedron(sides)) {
+      dieEl.classList.add('poly');
+      // During spin (.rolling class is set), hide the number — the tumbling shape is enough.
+      // Settled value appears when rolling class is removed by the caller.
+      var shownValue = dieEl.classList.contains('rolling') ? '' : value;
+      face.innerHTML = polyhedronSvg(sides, shownValue);
+    } else if (sides === 6 && value >= 1 && value <= 6) {
+      dieEl.classList.remove('poly');
       face.innerHTML = pipSvg(value);
     } else {
+      dieEl.classList.remove('poly');
       face.textContent = String(value);
     }
   }
@@ -2664,7 +2896,9 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
     var done = total - remaining;
     progressEl.textContent = (done + 1) + ' of ' + total;
 
-    tDiceGrid.innerHTML = '<div class="die"><div class="die-face">—</div><div class="die-type">d' + tState.sides + '</div></div>';
+    var poly = isPolyhedron(tState.sides);
+    var inner = poly ? polyhedronSvg(tState.sides, '') : '—';
+    tDiceGrid.innerHTML = '<div class="die' + (poly ? ' poly' : '') + '"><div class="die-face">' + inner + '</div><div class="die-type">d' + tState.sides + '</div></div>';
 
     tRolls.innerHTML = tState.players.map(function(pl, i) {
       var cls = 't-roll';
