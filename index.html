@@ -367,6 +367,18 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
   border-radius: 0;
 }
 
+/* Game-mode dice stay at the old 92px since games often display many dice at once */
+#games-mode .die.poly {
+  width: 92px;
+  height: 92px;
+}
+
+/* Risk side-by-side layout uses even smaller dice */
+.risk-battle .die.poly {
+  width: 62px;
+  height: 62px;
+}
+
 .die.poly .die-face svg.die-poly {
   width: 100%;
   height: 100%;
@@ -383,7 +395,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
   font-weight: 800;
   dominant-baseline: middle;
 }
-.die-poly .poly-halo { fill: none; stroke: var(--accent-bg); stroke-width: 4; stroke-linejoin: round; }
+.die-poly .poly-halo { fill: none; stroke: var(--accent-bg); stroke-width: 5.5; stroke-linejoin: round; }
 .die-poly .poly-fill { fill: var(--ink); stroke: none; }
 
 .die.poly .die-type {
@@ -391,9 +403,21 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
   right: -2px;
 }
 
-/* Polyhedron shake animation — same timing/amplitude as classic square dice. Consistent, no separate 3D tumble. */
+/* Polyhedron shake — mellow rock, only the SVG rocks so the d## label stays put */
 .die.poly.rolling {
-  animation: diceShake 0.12s ease-in-out infinite;
+  animation: none;
+}
+.die.poly.rolling .die-face svg.die-poly {
+  animation: polyRock 0.35s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+
+@keyframes polyRock {
+  0%   { transform: rotate(0deg); }
+  25%  { transform: rotate(-8deg); }
+  50%  { transform: rotate(0deg); }
+  75%  { transform: rotate(8deg); }
+  100% { transform: rotate(0deg); }
 }
 
 .die.max-roll {
@@ -896,6 +920,13 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
   box-shadow: 0 0 0 3px var(--mint), 0 2px 0 var(--border);
 }
 .die.held .die-face { color: var(--accent); }
+
+/* Poly dice have no border, so apply held state via SVG drop-shadow instead */
+.die.poly.held {
+  box-shadow: none;
+  filter: drop-shadow(0 0 2px var(--mint)) drop-shadow(0 0 4px var(--mint));
+}
+
 .die.selectable { cursor: pointer; }
 .die.dimmed { opacity: 0.4; }
 
@@ -1212,6 +1243,11 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
   width: 62px;
   height: 62px;
   border-radius: 12px;
+}
+
+.bg-quadruple .die.poly {
+  width: 62px;
+  height: 62px;
 }
 
 .bg-quadruple .die .die-face {
@@ -1668,7 +1704,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
 </div>
 
 <footer class="footer">
-  <a href="https://0utput.co" target="_blank" rel="noopener">0utput.co</a> · r0ll v19
+  <a href="https://0utput.co" target="_blank" rel="noopener">0utput.co</a> · r0ll v22
 </footer>
 
 <script>
@@ -1692,6 +1728,9 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
  * v17 · 2026-04-23 · Polyhedron dice. Non-d6 dice (d4, d8, d10, d12, d20) now render as proper polyhedron silhouettes with visible geometry instead of rounded squares. d4/d8/d10 show multiple faces with numbers on each, tumbling via 3D CSS transforms. d12/d20 show silhouette with internal edge lines and a cycling center number during spin. d6 pips unchanged. Square container removed for non-d6 dice so the shape itself is the die.
  * v18 · 2026-04-23 · Polyhedron dice v2 — now with proper fake-3D three-tone filled shading (lightest on front face, medium on sides, dark on receding faces) so they read as solid objects, not flat outlines. Numbers now use Big Shoulders Display 800 (tall, condensed, display face) at a much larger size with a light-halo stroke behind the ink-fill to knock out crossings with face edges. All 5 polyhedra redesigned. Number is hidden during spin (em-dash shown) and appears only on settle — matches how physical dice work. Google Fonts import expanded to include Big Shoulders.
  * v19 · 2026-04-23 · Polyhedron dice v3 — fixes from v18. (1) Numbers now render on the settled die — the "hide during spin" logic had a bug where setDieFace saw `.rolling` class still present at settle time and kept hiding. Replaced with explicit blank-during-spin values and full value on the settled call. (2) Polyhedron dice size bumped up significantly (width/height increased, the shapes are the focal point now). (3) Dropped the 3D tumble animation — polyhedrons now use the same shake animation as square dice for consistency and because the shake reads as "rolling" without needing fake perspective rotation.
+ * v20 · 2026-04-23 · Polyhedron dice polish. (1) Replaced jerky shake with a mellow rocking animation (gentle ±8° rotation at 0.35s per cycle, ease-in-out). (2) Animation now targets only the SVG shape — the d## label at the corner stays stationary. Classic d6 rolls unchanged. (3) Numbers bumped up significantly in size (d4 46px, d8 38px, d10 38px, d12 40px, d20 36px) and nudged slightly above vertical center so they feel more anchored within each face.
+ * v21 · 2026-04-23 · (1) Number positions tuned per-die: d4 higher, d8 lower, d10 lower, d20 a hair higher. d12 unchanged. (2) d6 promoted to polyhedron style — 3/4 perspective cube view with three visible faces (top, front, right), pips on each face with three-tone shading. Classic flat-square d6 retired. Matches the visual weight of the other polyhedra.
+ * v22 · 2026-04-23 · d8 number nudged down further (y 42 → 46) to sit visually centered in the upper octahedron face rather than riding too close to the top edge.
  */
 (function() {
   'use strict';
@@ -2393,6 +2432,32 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
     ].join('');
   }
 
+  // d6 — cube in 3/4 perspective view. Three visible faces: front (light, shows pips),
+  // top (mid, receding up-back), right (dark, receding back-right).
+  // Pips are positioned on the front face.
+  function polyhedronD6(displayValue) {
+    // Front face rect: (12, 32) to (72, 92) — 60 wide × 60 tall.
+    // Top face slopes up-back, right face slopes back-right.
+    var pips = displayValue && PIP_POSITIONS[displayValue] ? PIP_POSITIONS[displayValue] : [];
+    // Transform pip coords from 0-100 standard space to front-face coords
+    var pipCircles = pips.map(function(p) {
+      var x = 12 + (p[0] / 100) * 60;
+      var y = 32 + (p[1] / 100) * 60;
+      return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="var(--ink)"/>';
+    }).join('');
+    return [
+      '<svg class="die-poly" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">',
+      // Right face (darkest, receding)
+      '<polygon points="72,32 90,14 90,74 72,92" class="face-dark"/>',
+      // Top face (mid, receding up)
+      '<polygon points="12,32 72,32 90,14 30,14" class="face-mid"/>',
+      // Front face (lightest, holds pips)
+      '<polygon points="12,32 72,32 72,92 12,92" class="face-light"/>',
+      pipCircles,
+      '</svg>'
+    ].join('');
+  }
+
   // d4 — tetrahedron viewed from slightly above. 3 visible faces. Number in front triangle.
   function polyhedronD4(displayValue) {
     return [
@@ -2401,7 +2466,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
       '<polygon points="50,12 12,84 88,84" class="face-light"/>',  // big front triangle
       '<polygon points="50,12 12,84 30,48" class="face-mid"/>',    // visible left side ridge
       '<polygon points="50,12 88,84 70,48" class="face-dark"/>',   // visible right side ridge
-      haloText(50, 68, 40, displayValue),
+      haloText(50, 54, 46, displayValue),
       '</svg>'
     ].join('');
   }
@@ -2419,7 +2484,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
       '<polygon points="8,50 50,50 50,92" class="face-dark"/>',
       // Lower-right face (mid)
       '<polygon points="92,50 50,50 50,92" class="face-mid"/>',
-      haloText(50, 42, 30, displayValue),
+      haloText(50, 46, 38, displayValue),
       '</svg>'
     ].join('');
   }
@@ -2440,7 +2505,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
       '<polygon points="8,48 20,40 50,56 50,92" class="face-dark"/>',
       // Right receding kite
       '<polygon points="92,48 80,40 50,56 50,92" class="face-dark"/>',
-      haloText(50, 44, 30, displayValue),
+      haloText(50, 44, 38, displayValue),
       '</svg>'
     ].join('');
   }
@@ -2480,7 +2545,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
     }
     // Inner central pentagon (light — holds the number)
     svg.push('<polygon points="' + inner + '" class="face-light"/>');
-    svg.push(haloText(50, 60, 32, displayValue));
+    svg.push(haloText(50, 54, 40, displayValue));
     svg.push('</svg>');
     return svg.join('');
   }
@@ -2513,7 +2578,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
       '<polygon points="' + CL + ' ' + CR + ' ' + BOT + '" class="face-mid"/>',
       '<polygon points="' + CL + ' ' + LL + ' ' + BOT + '" class="face-dark"/>',
       '<polygon points="' + CR + ' ' + LR + ' ' + BOT + '" class="face-dark"/>',
-      haloText(50, 62, 28, displayValue),
+      haloText(50, 52, 36, displayValue),
       '</svg>'
     ].join('');
   }
@@ -2533,6 +2598,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
   // Main dispatcher: returns the SVG string for a polyhedron die face content.
   function polyhedronSvg(sides, displayValue) {
     if (sides === 4) return polyhedronD4(displayValue);
+    if (sides === 6) return polyhedronD6(displayValue);
     if (sides === 8) return polyhedronD8(displayValue);
     if (sides === 10) return polyhedronD10(displayValue);
     if (sides === 12) return polyhedronD12(displayValue);
@@ -2542,7 +2608,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
 
   // Is this die type a polyhedron style (vs the classic square with pips/number)?
   function isPolyhedron(sides) {
-    return sides === 4 || sides === 8 || sides === 10 || sides === 12 || sides === 20;
+    return sides === 4 || sides === 6 || sides === 8 || sides === 10 || sides === 12 || sides === 20;
   }
 
   // ---------- Mode toggle ----------
@@ -2663,9 +2729,6 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
       dieEl.classList.add('poly');
       // Caller controls the value: empty string during spin ticks, real value on settle.
       face.innerHTML = polyhedronSvg(sides, value);
-    } else if (sides === 6 && value >= 1 && value <= 6) {
-      dieEl.classList.remove('poly');
-      face.innerHTML = pipSvg(value);
     } else {
       dieEl.classList.remove('poly');
       face.textContent = String(value);
@@ -3054,14 +3117,24 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
   // Shared helper: build a d6 die element with optional hold behavior.
   function makeGameDie(value, opts) {
     opts = opts || {};
+    var sides = opts.sides || 6;
     var d = document.createElement('div');
     d.className = 'die';
+    if (isPolyhedron(sides)) d.classList.add('poly');
     if (opts.selectable) d.classList.add('selectable');
     if (opts.held) d.classList.add('held');
     if (opts.dropped) d.classList.add('dropped');
     if (opts.dimmed) d.classList.add('dimmed');
-    var face = '<div class="die-face">' + (value === null ? '—' : (opts.sides === 6 || !opts.sides ? pipSvg(value) : String(value))) + '</div>';
-    var label = '<div class="die-type">d' + (opts.sides || 6) + '</div>';
+    var faceInner;
+    if (value === null) {
+      faceInner = isPolyhedron(sides) ? polyhedronSvg(sides, '') : '—';
+    } else if (isPolyhedron(sides)) {
+      faceInner = polyhedronSvg(sides, value);
+    } else {
+      faceInner = String(value);
+    }
+    var face = '<div class="die-face">' + faceInner + '</div>';
+    var label = '<div class="die-type">d' + sides + '</div>';
     d.innerHTML = face + label;
     return d;
   }
