@@ -357,8 +357,10 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
   animation: diceShake 0.12s ease-in-out infinite;
 }
 
-/* Polyhedron die — no square container, SVG is the die */
+/* Polyhedron die — no square container, SVG is the die. Sized larger for visual impact. */
 .die.poly {
+  width: 130px;
+  height: 130px;
   background: transparent;
   border: none;
   box-shadow: none;
@@ -389,16 +391,9 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
   right: -2px;
 }
 
+/* Polyhedron shake animation — same timing/amplitude as classic square dice. Consistent, no separate 3D tumble. */
 .die.poly.rolling {
-  animation: polyTumble 0.9s linear infinite;
-}
-
-@keyframes polyTumble {
-  0%   { transform: rotate(0deg) rotateX(0deg); }
-  25%  { transform: rotate(90deg) rotateX(15deg); }
-  50%  { transform: rotate(180deg) rotateX(-10deg); }
-  75%  { transform: rotate(270deg) rotateX(12deg); }
-  100% { transform: rotate(360deg) rotateX(0deg); }
+  animation: diceShake 0.12s ease-in-out infinite;
 }
 
 .die.max-roll {
@@ -1247,6 +1242,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
 /* Responsive */
 @media (max-width: 480px) {
   .die { width: 78px; height: 78px; border-radius: 15px; }
+  .die.poly { width: 108px; height: 108px; }
   .die-face { font-size: 32px; }
   .wordmark { font-size: 24px; }
   .tagline { font-size: 10px; }
@@ -1256,6 +1252,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
 
 @media (max-width: 360px) {
   .die { width: 68px; height: 68px; }
+  .die.poly { width: 92px; height: 92px; }
   .die-face { font-size: 28px; }
   .dice-grid { gap: 10px; }
 }
@@ -1671,7 +1668,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
 </div>
 
 <footer class="footer">
-  <a href="https://0utput.co" target="_blank" rel="noopener">0utput.co</a> · r0ll v18
+  <a href="https://0utput.co" target="_blank" rel="noopener">0utput.co</a> · r0ll v19
 </footer>
 
 <script>
@@ -1694,6 +1691,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
  * v16 · 2026-04-22 · Removed spa/ambient pad (not quite right yet). Sound toggle is back to two states: off → on → off. Pre-roll swell kept — it's a nice touch even without the ambient bed. Bundled as index.html for GitHub deploy alongside the versioned file and OG image.
  * v17 · 2026-04-23 · Polyhedron dice. Non-d6 dice (d4, d8, d10, d12, d20) now render as proper polyhedron silhouettes with visible geometry instead of rounded squares. d4/d8/d10 show multiple faces with numbers on each, tumbling via 3D CSS transforms. d12/d20 show silhouette with internal edge lines and a cycling center number during spin. d6 pips unchanged. Square container removed for non-d6 dice so the shape itself is the die.
  * v18 · 2026-04-23 · Polyhedron dice v2 — now with proper fake-3D three-tone filled shading (lightest on front face, medium on sides, dark on receding faces) so they read as solid objects, not flat outlines. Numbers now use Big Shoulders Display 800 (tall, condensed, display face) at a much larger size with a light-halo stroke behind the ink-fill to knock out crossings with face edges. All 5 polyhedra redesigned. Number is hidden during spin (em-dash shown) and appears only on settle — matches how physical dice work. Google Fonts import expanded to include Big Shoulders.
+ * v19 · 2026-04-23 · Polyhedron dice v3 — fixes from v18. (1) Numbers now render on the settled die — the "hide during spin" logic had a bug where setDieFace saw `.rolling` class still present at settle time and kept hiding. Replaced with explicit blank-during-spin values and full value on the settled call. (2) Polyhedron dice size bumped up significantly (width/height increased, the shapes are the focal point now). (3) Dropped the 3D tumble animation — polyhedrons now use the same shake animation as square dice for consistency and because the shake reads as "rolling" without needing fake perspective rotation.
  */
 (function() {
   'use strict';
@@ -2663,10 +2661,8 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
     var face = dieEl.querySelector('.die-face');
     if (isPolyhedron(sides)) {
       dieEl.classList.add('poly');
-      // During spin (.rolling class is set), hide the number — the tumbling shape is enough.
-      // Settled value appears when rolling class is removed by the caller.
-      var shownValue = dieEl.classList.contains('rolling') ? '' : value;
-      face.innerHTML = polyhedronSvg(sides, shownValue);
+      // Caller controls the value: empty string during spin ticks, real value on settle.
+      face.innerHTML = polyhedronSvg(sides, value);
     } else if (sides === 6 && value >= 1 && value <= 6) {
       dieEl.classList.remove('poly');
       face.innerHTML = pipSvg(value);
@@ -2674,6 +2670,12 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
       dieEl.classList.remove('poly');
       face.textContent = String(value);
     }
+  }
+
+  // During a spin tick, classic dice cycle random values (feels like real rolling),
+  // but polyhedra show no number until settled. This helper returns the right value.
+  function spinTickValue(sides) {
+    return isPolyhedron(sides) ? '' : randInt(sides);
   }
 
   function rollSingle() {
@@ -2690,7 +2692,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
     var start = Date.now();
     var iv = setInterval(function() {
       dice.forEach(function(d) {
-        setDieFace(d, singleState.sides, randInt(singleState.sides));
+        setDieFace(d, singleState.sides, spinTickValue(singleState.sides));
       });
       playClack();
       if (Date.now() - start > spinDuration) {
@@ -2936,7 +2938,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
     var spinDuration = 650;
     var start = Date.now();
     var iv = setInterval(function() {
-      setDieFace(die, tState.sides, randInt(tState.sides));
+      setDieFace(die, tState.sides, spinTickValue(tState.sides));
       playClack();
       if (Date.now() - start > spinDuration) {
         clearInterval(iv);
@@ -3078,7 +3080,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
     var iv = setInterval(function() {
       dieEls.forEach(function(el, i) {
         if (frozen[i]) return;
-        setDieFace(el, sides, randInt(sides));
+        setDieFace(el, sides, spinTickValue(sides));
       });
       playClack();
       if (Date.now() - start > spinDuration) {
