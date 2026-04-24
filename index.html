@@ -403,31 +403,44 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
   right: -2px;
 }
 
-/* Polyhedron rock — gentle pendulum motion, only the SVG rocks so the d## label stays put */
+/* Polyhedron rock — slow, gentle pendulum. Only the SVG rocks; the d## label stays put.
+   !important on the container's `animation: none` to guarantee the old diceShake rule
+   (`.die.rolling`) never applies when the die is a polyhedron. */
 .die.poly.rolling {
-  animation: none;
+  animation: none !important;
 }
 .die.poly.rolling .die-face svg.die-poly {
-  animation: polyRock 0.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: polyRock 0.65s ease-in-out infinite;
   transform-origin: 50% 50%;
 }
 
-/* More keyframe stops + wider swing (±14°) + smooth pendulum easing.
-   The die lingers at each extreme and passes through center quickly, like a real rocking object. */
+/* Full pendulum cycle: 0° → -40° → 0° → +40° → 0°.
+   Starts AND ends at 0° so stopping the animation at any cycle boundary lands the die flat. */
 @keyframes polyRock {
   0%   { transform: rotate(0deg); }
-  12%  { transform: rotate(-8deg); }
-  25%  { transform: rotate(-14deg); }
-  37%  { transform: rotate(-8deg); }
+  25%  { transform: rotate(-40deg); }
   50%  { transform: rotate(0deg); }
-  62%  { transform: rotate(8deg); }
-  75%  { transform: rotate(14deg); }
-  87%  { transform: rotate(8deg); }
+  75%  { transform: rotate(40deg); }
   100% { transform: rotate(0deg); }
 }
 
 .die.max-roll {
   animation: maxPulse 0.6s ease-out;
+}
+
+/* Poly dice get a filter-based pulse instead of a transform scale,
+   so it doesn't fight with the SVG-level rocking transform. */
+.die.poly.max-roll {
+  animation: none;
+}
+.die.poly.max-roll .die-face svg.die-poly {
+  animation: polyMaxPulse 0.6s ease-out;
+}
+
+@keyframes polyMaxPulse {
+  0%   { filter: drop-shadow(0 0 0 var(--mint)); }
+  40%  { filter: drop-shadow(0 0 6px var(--mint)) drop-shadow(0 0 14px rgba(0, 189, 120, 0.6)); }
+  100% { filter: drop-shadow(0 0 0 var(--mint)); }
 }
 
 @keyframes diceShake {
@@ -1710,7 +1723,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
 </div>
 
 <footer class="footer">
-  <a href="https://0utput.co" target="_blank" rel="noopener">0utput.co</a> · r0ll v23
+  <a href="https://0utput.co" target="_blank" rel="noopener">0utput.co</a> · r0ll v37
 </footer>
 
 <script>
@@ -1738,6 +1751,20 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
  * v21 · 2026-04-23 · (1) Number positions tuned per-die: d4 higher, d8 lower, d10 lower, d20 a hair higher. d12 unchanged. (2) d6 promoted to polyhedron style — 3/4 perspective cube view with three visible faces (top, front, right), pips on each face with three-tone shading. Classic flat-square d6 retired. Matches the visual weight of the other polyhedra.
  * v22 · 2026-04-23 · d8 number nudged down further (y 42 → 46) to sit visually centered in the upper octahedron face rather than riding too close to the top edge.
  * v23 · 2026-04-23 · Polyhedron rock animation rebuilt. Much slower (0.35s → 0.9s per cycle, roughly matching the spin duration so the die settles near 0°), wider swing (±8° → ±14°), and 9 keyframe stops instead of 5 with cubic-bezier pacing that lingers at each extreme and passes through center faster — gives it a natural pendulum feel instead of the frantic Beavis-and-Butthead jerk.
+ * v24 · 2026-04-23 · Rock animation much slower (0.9s → 2.2s per cycle), amplitude ±14° → ±10°, simplified to a clean 2-stop sine swing so ease-in-out can do its smoothing work. Added `!important` to the container's `animation: none` to guarantee the old 0.12s diceShake never leaks through to poly dice on any browser.
+ * v25 · 2026-04-23 · Rock speed split the difference — 2.2s felt too slow, back to 1.4s. Amplitude stays ±10°. Number Y positions nudged down on d4 (54→62), d8 (46→52), and d10 (44→50). d12 and d20 unchanged.
+ * v26 · 2026-04-23 · Rock speed bumped faster (1.4s → 1.0s). d4 redesigned as proper 3D tetrahedron — big front face pointed down with two foreshortened side faces forming a V below, so you can see three distinct faces and the whole thing reads as a real pyramid rather than a flat triangle with stripes.
+ * v27 · 2026-04-23 · Rock speed faster (1.0s → 0.7s). d4 flipped apex-up (classic in-play orientation), widened slightly for less "fantasy spike" proportions, and front face made smaller relative to the two side faces so the 3D effect reads clearly. Number moved to the smaller front face.
+ * v28 · 2026-04-23 · Rock speed much faster (0.7s → 0.4s). d4 number moved from bottom front face to vertical center of the whole silhouette (y 76 → 54), resized 26 → 40 to match the other polyhedra. Halo stroke masks the edge crossings where the number overlaps face boundaries.
+ * v29 · 2026-04-23 · Rock swing widened from ±10° to ±25° at the same 0.4s speed. The wider arc reads as deliberate rocking rather than a nervous wiggle — bigger motion at the same tempo feels calmer because there's actual follow-through to each swing.
+ * v30 · 2026-04-23 · Rock speed slowed back down (0.4s → 0.65s). Kept the wider ±25° swing.
+ * v31 · 2026-04-23 · Much slower (0.65s → 1.2s per cycle) and much wider (±25° → ±40°). Aiming for the rocking-chair feel: big commitment to each swing, slow enough to look deliberate not anxious.
+ * v32 · 2026-04-23 · Fixed two bugs causing the "jerky tail" on settle. (1) setDieFace was replacing the entire SVG on every 70ms spin tick, which restarted the rock animation from 0° on each tick — the motion was visually stuttering every frame. Now the SVG stays in place and only the text nodes update. (2) maxPulse uses transform:scale on the container, which fought the SVG's rotate transform during roll settle. Poly dice now get a drop-shadow-based pulse (polyMaxPulse) on the SVG instead. Keyframes also rewritten to 0° → -40° → 0° → +40° → 0° so every cycle lands at 0° regardless of where the spin stops.
+ * v33 · 2026-04-23 · Fixed missing number on settle — haloText was returning an empty string when value was blank, so the initial SVG (rendered with empty value at spin start) had no text elements at all. Then on settle, the in-place update logic from v32 tried to query .poly-num elements and found none. Now haloText always emits both text elements, just with empty textContent when there's no value, so they can be populated via textContent on later ticks.
+ * v34 · 2026-04-23 · Fixed d6 pips not showing on settle — same root cause as v33. polyhedronD6 only rendered pip circles for the current value, so the initial blank-value SVG had no pips to update. Now all 6 possible pip positions are always rendered with display:none, and setDieFace toggles visibility based on which positions belong to the current face value. Rock speed bumped from 1.2s → 0.95s per cycle.
+ * v35 · 2026-04-23 · Rock speed 0.95s → 0.8s per cycle.
+ * v36 · 2026-04-23 · Rock speed 0.8s → 0.65s per cycle.
+ * v37 · 2026-04-23 · Fixed game d6 rendering — v34's polyhedronD6 started emitting all pips with display:none regardless of the value passed in, expecting setDieFace to toggle visibility on later ticks. But makeGameDie (used by Yahtzee/Farkle/etc.) calls polyhedronSvg directly for initial rendering with a real value and never gets re-rendered through setDieFace after yahtzeeRender() rebuilds the grid. Result: game dice always showed 0 pips. Now polyhedronD6 respects its displayValue arg at render time AND still emits all 6 pip positions with data-for attrs so in-place toggling still works on spin ticks.
  */
 (function() {
   'use strict';
@@ -2432,25 +2459,41 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
 
   // Helper: produce the halo-text pair centered at (x, y) with given size.
   function haloText(x, y, size, value) {
-    if (!value && value !== 0) return '';
+    // Always emit the elements, even when empty — later spin ticks and settle calls
+    // update their textContent in place without recreating the SVG.
+    var v = (value || value === 0) ? value : '';
     return [
-      '<text class="poly-num poly-halo" x="', x, '" y="', y, '" text-anchor="middle" font-size="', size, '">', value, '</text>',
-      '<text class="poly-num poly-fill" x="', x, '" y="', y, '" text-anchor="middle" font-size="', size, '">', value, '</text>'
+      '<text class="poly-num poly-halo" x="', x, '" y="', y, '" text-anchor="middle" font-size="', size, '">', v, '</text>',
+      '<text class="poly-num poly-fill" x="', x, '" y="', y, '" text-anchor="middle" font-size="', size, '">', v, '</text>'
     ].join('');
   }
 
   // d6 — cube in 3/4 perspective view. Three visible faces: front (light, shows pips),
   // top (mid, receding up-back), right (dark, receding back-right).
-  // Pips are positioned on the front face.
+  // Pips are positioned on the front face. ALL possible pip positions (1-6 worth) are always
+  // drawn but hidden based on current value — toggled visible by setDieFace. This lets us
+  // update pips in place without destroying/recreating the SVG on every spin tick.
   function polyhedronD6(displayValue) {
-    // Front face rect: (12, 32) to (72, 92) — 60 wide × 60 tall.
-    // Top face slopes up-back, right face slopes back-right.
-    var pips = displayValue && PIP_POSITIONS[displayValue] ? PIP_POSITIONS[displayValue] : [];
-    // Transform pip coords from 0-100 standard space to front-face coords
-    var pipCircles = pips.map(function(p) {
-      var x = 12 + (p[0] / 100) * 60;
-      var y = 32 + (p[1] / 100) * 60;
-      return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="var(--ink)"/>';
+    var vStr = (displayValue || displayValue === 0) ? String(displayValue) : '';
+    // Collect every unique pip position across faces 1-6, tagged with which values need each.
+    var allPositions = {};
+    for (var v = 1; v <= 6; v++) {
+      (PIP_POSITIONS[v] || []).forEach(function(p) {
+        var key = p[0] + ',' + p[1];
+        if (!allPositions[key]) allPositions[key] = [];
+        allPositions[key].push(v);
+      });
+    }
+    var pipCircles = Object.keys(allPositions).map(function(key) {
+      var parts = key.split(',');
+      var x = 12 + (parseFloat(parts[0]) / 100) * 60;
+      var y = 32 + (parseFloat(parts[1]) / 100) * 60;
+      var forVals = allPositions[key];
+      var forAttr = forVals.join(',');
+      // Pip visible iff the current value is in its "for" list
+      var visible = forVals.indexOf(parseInt(vStr, 10)) !== -1;
+      var style = visible ? '' : 'style="display:none"';
+      return '<circle class="d6-pip" data-for="' + forAttr + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="var(--ink)" ' + style + '/>';
     }).join('');
     return [
       '<svg class="die-poly" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">',
@@ -2465,15 +2508,25 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
     ].join('');
   }
 
-  // d4 — tetrahedron viewed from slightly above. 3 visible faces. Number in front triangle.
+  // d4 — tetrahedron pointed tip-up, classic in-play orientation.
+  // Front face is proportionally smaller so the two side faces are more visible, giving proper 3D feel.
+  // Overall silhouette is a wide, slightly squat triangle — more like a real tetrahedron than a fantasy spike.
   function polyhedronD4(displayValue) {
+    // Silhouette vertices:
+    //   APEX (top):              50, 10
+    //   BL (bottom-left corner): 10, 82
+    //   BR (bottom-right corner):90, 82
+    // Inner vertex where all three faces meet (the back-center point, projected):
+    //   BACK (inside):           50, 64  — higher than center, pulls front face smaller
     return [
       '<svg class="die-poly" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">',
-      // Three visible faces. Front (light), left back (mid), right back (dark).
-      '<polygon points="50,12 12,84 88,84" class="face-light"/>',  // big front triangle
-      '<polygon points="50,12 12,84 30,48" class="face-mid"/>',    // visible left side ridge
-      '<polygon points="50,12 88,84 70,48" class="face-dark"/>',   // visible right side ridge
-      haloText(50, 54, 46, displayValue),
+      // Left face (mid) — receding back-left, visible on the lower-left
+      '<polygon points="50,10 10,82 50,64" class="face-mid"/>',
+      // Right face (dark) — receding back-right, visible on the lower-right
+      '<polygon points="50,10 90,82 50,64" class="face-dark"/>',
+      // Front face (light) — the bottom trapezoid-ish triangle you read, smaller than before
+      '<polygon points="10,82 90,82 50,64" class="face-light"/>',
+      haloText(50, 54, 40, displayValue),
       '</svg>'
     ].join('');
   }
@@ -2491,7 +2544,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
       '<polygon points="8,50 50,50 50,92" class="face-dark"/>',
       // Lower-right face (mid)
       '<polygon points="92,50 50,50 50,92" class="face-mid"/>',
-      haloText(50, 46, 38, displayValue),
+      haloText(50, 52, 38, displayValue),
       '</svg>'
     ].join('');
   }
@@ -2512,7 +2565,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
       '<polygon points="8,48 20,40 50,56 50,92" class="face-dark"/>',
       // Right receding kite
       '<polygon points="92,48 80,40 50,56 50,92" class="face-dark"/>',
-      haloText(50, 44, 38, displayValue),
+      haloText(50, 50, 38, displayValue),
       '</svg>'
     ].join('');
   }
@@ -2734,8 +2787,25 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
     var face = dieEl.querySelector('.die-face');
     if (isPolyhedron(sides)) {
       dieEl.classList.add('poly');
-      // Caller controls the value: empty string during spin ticks, real value on settle.
-      face.innerHTML = polyhedronSvg(sides, value);
+      var existingSvg = face.querySelector('svg.die-poly');
+      var expectedSides = existingSvg && existingSvg.getAttribute('data-sides');
+      if (existingSvg && expectedSides === String(sides)) {
+        // In-place update: text nodes (all polyhedra) and pips (d6).
+        var textValue = (value === '' || value === null || value === undefined) ? '' : String(value);
+        existingSvg.querySelectorAll('.poly-num').forEach(function(t) { t.textContent = textValue; });
+        if (sides === 6) {
+          // Show only the pips whose data-for includes this value
+          var vStr = String(value);
+          existingSvg.querySelectorAll('.d6-pip').forEach(function(pip) {
+            var forVals = (pip.getAttribute('data-for') || '').split(',');
+            pip.style.display = forVals.indexOf(vStr) !== -1 ? '' : 'none';
+          });
+        }
+      } else {
+        face.innerHTML = polyhedronSvg(sides, value);
+        var newSvg = face.querySelector('svg.die-poly');
+        if (newSvg) newSvg.setAttribute('data-sides', String(sides));
+      }
     } else {
       dieEl.classList.remove('poly');
       face.textContent = String(value);
