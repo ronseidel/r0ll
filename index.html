@@ -1723,7 +1723,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
 </div>
 
 <footer class="footer">
-  <a href="https://0utput.co" target="_blank" rel="noopener">0utput.co</a> · r0ll v37
+  <a href="https://0utput.co" target="_blank" rel="noopener">0utput.co</a> · r0ll v38
 </footer>
 
 <script>
@@ -1765,6 +1765,7 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
  * v35 · 2026-04-23 · Rock speed 0.95s → 0.8s per cycle.
  * v36 · 2026-04-23 · Rock speed 0.8s → 0.65s per cycle.
  * v37 · 2026-04-23 · Fixed game d6 rendering — v34's polyhedronD6 started emitting all pips with display:none regardless of the value passed in, expecting setDieFace to toggle visibility on later ticks. But makeGameDie (used by Yahtzee/Farkle/etc.) calls polyhedronSvg directly for initial rendering with a real value and never gets re-rendered through setDieFace after yahtzeeRender() rebuilds the grid. Result: game dice always showed 0 pips. Now polyhedronD6 respects its displayValue arg at render time AND still emits all 6 pip positions with data-for attrs so in-place toggling still works on spin ticks.
+ * v38 · 2026-04-23 · Fixed multiplayer settle not showing the rolled number — renderTRolling was firing immediately after each player's roll settled, rebuilding the die placeholder and wiping the just-displayed value before the user could see it. Now there's a 900ms delay before advancing to the next player, so the rolled number stays visible long enough to read. The player-list side panel still updates immediately.
  */
 (function() {
   'use strict';
@@ -3100,7 +3101,8 @@ html.theme-dark .theme-btn > .icon-sun { display: block; }
         if (next < 0) {
           setTimeout(showResults, 700);
         } else {
-          renderTRolling();
+          // Let the rolled number display briefly before advancing to the next player
+          setTimeout(renderTRolling, 900);
         }
       }
     }, 70);
